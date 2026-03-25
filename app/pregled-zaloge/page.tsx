@@ -19,7 +19,7 @@ const sidebarItems = [
   { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
   { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
   { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-  { icon: "📈", label: "Poročila", active: false, href: "#" },
+  { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
 ]
 
 export default function PregledZaloge() {

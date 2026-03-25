@@ -155,7 +155,7 @@ export default function Delniki() {
     { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
     { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
     { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-    { icon: "📈", label: "Poročila", active: false, href: "#" },
+    { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
   ]
 
   if (loading) return (

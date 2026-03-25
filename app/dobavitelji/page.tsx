@@ -75,7 +75,7 @@ export default function Dobavitelji() {
     { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
     { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
     { icon: "🏭", label: "Dobavitelji", active: true, href: "/dobavitelji" },
-    { icon: "📈", label: "Poročila", active: false, href: "#" },
+    { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
   ]
 
   if (loading) return (

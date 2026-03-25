@@ -75,7 +75,7 @@ export default function Stranke() {
     { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
     { icon: "👥", label: "Stranke", active: true, href: "/stranke" },
     { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-    { icon: "📈", label: "Poročila", active: false, href: "#" },
+    { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
   ]
 
   if (loading) return (
