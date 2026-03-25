@@ -21,48 +21,26 @@ export default function Poraba() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchMaterials()
-  }, [])
+  useEffect(() => { fetchMaterials() }, [])
 
   const fetchMaterials = async () => {
-    const { data } = await supabase
-      .from("materials")
-      .select("id, name, unit, current_stock")
-      .order("name")
+    const { data } = await supabase.from("materials").select("id, name, unit, current_stock").order("name")
     setMaterials(data || [])
     setLoading(false)
   }
 
   const handlePoraba = async () => {
     if (!selectedMaterial || quantity <= 0) return
-
     const material = materials.find(m => m.id === selectedMaterial)
     if (!material) return
-
     if (quantity > material.current_stock) {
       setError(`Ni dovolj zaloge! Na zalogi je samo ${material.current_stock} ${material.unit}.`)
       return
     }
-
     setError("")
-
-    const { error: movementError } = await supabase
-      .from("stock_movements")
-      .insert([{
-        material_id: selectedMaterial,
-        type: "out",
-        quantity,
-        note
-      }])
-
+    const { error: movementError } = await supabase.from("stock_movements").insert([{ material_id: selectedMaterial, type: "out", quantity, note }])
     if (movementError) return
-
-    await supabase
-      .from("materials")
-      .update({ current_stock: material.current_stock - quantity })
-      .eq("id", selectedMaterial)
-
+    await supabase.from("materials").update({ current_stock: material.current_stock - quantity }).eq("id", selectedMaterial)
     setSuccess(true)
     setSelectedMaterial(null)
     setQuantity(0)
@@ -72,15 +50,11 @@ export default function Poraba() {
   }
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>
-      Nalagam...
-    </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-
-      {/* SIDEBAR */}
       <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "#c41230", padding: "16px 20px" }}>
           <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
@@ -91,179 +65,68 @@ export default function Poraba() {
             { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
             { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
             { icon: "📤", label: "Poraba", active: true, href: "/poraba" },
+            { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
             { icon: "🏭", label: "Dobavitelji", active: false, href: "#" },
-            { icon: "📋", label: "Naročila", active: false, href: "#" },
             { icon: "📈", label: "Poročila", active: false, href: "#" },
           ].map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              style={{
-                display: "block",
-                padding: "10px 14px",
-                borderRadius: "6px",
-                marginBottom: "4px",
-                background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
-                borderLeft: item.active ? "3px solid #c41230" : "3px solid transparent",
-                color: item.active ? "white" : "#9ca3af",
-                cursor: "pointer",
-                fontSize: "13px",
-                textDecoration: "none",
-              }}
-            >
+            <a key={item.label} href={item.href} style={{
+              display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
+              background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
+              borderLeft: item.active ? "3px solid #c41230" : "3px solid transparent",
+              color: item.active ? "white" : "#9ca3af",
+              cursor: "pointer", fontSize: "13px", textDecoration: "none",
+            }}>
               {item.icon}&nbsp;&nbsp;{item.label}
             </a>
           ))}
         </div>
-        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>
-          © 2026 Compart
-        </div>
+        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
       </div>
 
-      {/* GLAVNA VSEBINA */}
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>
-            Poraba materiala
-          </h1>
-          <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>
-            Zabeleži porabo materiala iz skladišča.
-          </p>
+          <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Poraba materiala</h1>
+          <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Zabeleži porabo materiala iz skladišča.</p>
         </div>
 
         {success && (
-          <div style={{
-            background: "#f0fdf4",
-            border: "1px solid #86efac",
-            borderRadius: "8px",
-            padding: "14px 18px",
-            marginBottom: "24px",
-            color: "#16a34a",
-            fontWeight: "500",
-            fontSize: "14px",
-          }}>
+          <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#16a34a", fontWeight: "500", fontSize: "14px" }}>
             ✅ Poraba uspešno zabeležena!
           </div>
         )}
-
         {error && (
-          <div style={{
-            background: "#fff5f5",
-            border: "1px solid #fca5a5",
-            borderRadius: "8px",
-            padding: "14px 18px",
-            marginBottom: "24px",
-            color: "#dc2626",
-            fontWeight: "500",
-            fontSize: "14px",
-          }}>
+          <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#dc2626", fontWeight: "500", fontSize: "14px" }}>
             ⚠️ {error}
           </div>
         )}
 
-        <div style={{
-          background: "white",
-          border: "1px solid #e5e7eb",
-          borderRadius: "8px",
-          padding: "28px",
-          maxWidth: "560px",
-        }}>
+        <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "28px", maxWidth: "560px" }}>
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>
-              Material *
-            </label>
-            <select
-              value={selectedMaterial || ""}
-              onChange={e => {
-                setSelectedMaterial(parseInt(e.target.value))
-                setError("")
-              }}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                background: "white",
-                boxSizing: "border-box",
-              }}
-            >
+            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Material *</label>
+            <select value={selectedMaterial || ""} onChange={e => { setSelectedMaterial(parseInt(e.target.value)); setError("") }}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
               <option value="">-- Izberi material --</option>
-              {materials.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.name} (na zalogi: {m.current_stock} {m.unit})
-                </option>
-              ))}
+              {materials.map(m => <option key={m.id} value={m.id}>{m.name} (na zalogi: {m.current_stock} {m.unit})</option>)}
             </select>
           </div>
-
           <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>
-              Količina *
-            </label>
-            <input
-              type="number"
-              value={quantity}
-              onChange={e => {
-                setQuantity(parseFloat(e.target.value) || 0)
-                setError("")
-              }}
-              min={0}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
-            />
+            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Količina *</label>
+            <input type="number" value={quantity} onChange={e => { setQuantity(parseFloat(e.target.value) || 0); setError("") }} min={0}
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
           </div>
-
           <div style={{ marginBottom: "24px" }}>
-            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>
-              Opomba
-            </label>
-            <input
-              type="text"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="Namen porabe, delovni nalog..."
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                boxSizing: "border-box",
-              }}
-            />
+            <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opomba</label>
+            <input type="text" value={note} onChange={e => setNote(e.target.value)} placeholder="Namen porabe, delovni nalog..."
+              style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
           </div>
-
-          <button
-            onClick={handlePoraba}
-            disabled={!selectedMaterial || quantity <= 0}
-            style={{
-              width: "100%",
-              padding: "12px",
-              background: selectedMaterial && quantity > 0 ? "#c41230" : "#9ca3af",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: selectedMaterial && quantity > 0 ? "pointer" : "not-allowed",
-              fontSize: "15px",
-              fontWeight: "bold",
-            }}
-          >
+          <button onClick={handlePoraba} disabled={!selectedMaterial || quantity <= 0}
+            style={{ width: "100%", padding: "12px", background: selectedMaterial && quantity > 0 ? "#c41230" : "#9ca3af", color: "white", border: "none", borderRadius: "6px", cursor: selectedMaterial && quantity > 0 ? "pointer" : "not-allowed", fontSize: "15px", fontWeight: "bold" }}>
             📤 Potrdi porabo
           </button>
         </div>
 
-        {/* ZADNJA PORABA */}
         <div style={{ marginTop: "40px", maxWidth: "560px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#111827", marginBottom: "16px" }}>
-            Zadnja poraba
-          </h2>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#111827", marginBottom: "16px" }}>Zadnja poraba</h2>
           <RecentMovements type="out" supabase={supabase} materials={materials} />
         </div>
       </div>
@@ -273,30 +136,18 @@ export default function Poraba() {
 
 function RecentMovements({ type, supabase, materials }: { type: string, supabase: any, materials: Material[] }) {
   const [movements, setMovements] = useState<any[]>([])
-
   useEffect(() => {
-    supabase
-      .from("stock_movements")
-      .select("*")
-      .eq("type", type)
-      .order("created_at", { ascending: false })
-      .limit(10)
+    supabase.from("stock_movements").select("*").eq("type", type).order("created_at", { ascending: false }).limit(10)
       .then(({ data }: any) => setMovements(data || []))
   }, [])
-
-  if (movements.length === 0) return (
-    <p style={{ color: "#9ca3af", fontSize: "14px" }}>Še ni zapisov.</p>
-  )
-
+  if (movements.length === 0) return <p style={{ color: "#9ca3af", fontSize: "14px" }}>Še ni zapisov.</p>
   return (
     <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
             {["Material", "Količina", "Opomba", "Datum"].map(h => (
-              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase" }}>
-                {h}
-              </th>
+              <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase" }}>{h}</th>
             ))}
           </tr>
         </thead>
