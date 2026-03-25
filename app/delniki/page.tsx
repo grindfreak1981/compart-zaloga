@@ -103,21 +103,55 @@ export default function Delniki() {
   }
 
   const closeWorkOrder = async (wo: WorkOrder) => {
-    const { data: woItems } = await supabase
+    const { data: woItems, error: fetchError } = await supabase
       .from("work_order_items")
       .select("*")
       .eq("work_order_id", wo.id)
 
-    if (woItems) {
-      for (const item of woItems) {
-        const mat = materials.find(m => m.id === item.material_id)
-        if (!mat) continue
-        await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
-        await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
+    if (fetchError) {
+      alert("Napaka pri branju postavk: " + fetchError.message)
+      return
+    }
+
+    if (!woItems || woItems.length === 0) {
+      alert("Ta nalog nima materialov.")
+      return
+    }
+
+    for (const item of woItems) {
+      const mat = materials.find(m => m.id === item.material_id)
+      if (!mat) continue
+
+      const { error: updateError } = await supabase
+        .from("materials")
+        .update({ current_stock: mat.current_stock - item.quantity })
+        .eq("id", item.material_id)
+
+      if (updateError) {
+        alert("Napaka pri odštevanju zaloge: " + updateError.message)
+        return
+      }
+
+      const { error: movError } = await supabase
+        .from("stock_movements")
+        .insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
+
+      if (movError) {
+        alert("Napaka pri stock_movements: " + movError.message)
+        return
       }
     }
 
-    await supabase.from("work_orders").update({ status: "closed" }).eq("id", wo.id)
+    const { error: closeError } = await supabase
+      .from("work_orders")
+      .update({ status: "closed" })
+      .eq("id", wo.id)
+
+    if (closeError) {
+      alert("Napaka pri zaključku naloga: " + closeError.message)
+      return
+    }
+
     fetchAll()
   }
 
