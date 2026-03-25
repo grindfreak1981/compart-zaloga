@@ -12,45 +12,38 @@ interface Material {
   notes?: string
 }
 
+const sidebarItems = [
+  { icon: "📊", label: "Pregled zaloge", active: true, href: "/pregled-zaloge" },
+  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
+  { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
+  { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
+  { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
+  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
+  { icon: "📈", label: "Poročila", active: false, href: "#" },
+]
+
 export default function PregledZaloge() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [newMaterial, setNewMaterial] = useState({
-    name: "",
-    unit: "m²",
-    min_stock: 0,
-    notes: ""
-  })
+  const [newMaterial, setNewMaterial] = useState({ name: "", unit: "m²", min_stock: 0, notes: "" })
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchMaterials()
-  }, [])
+  useEffect(() => { fetchMaterials() }, [])
 
   const fetchMaterials = async () => {
-    const { data, error } = await supabase
-      .from("materials")
-      .select("id, name, unit, current_stock, min_stock, notes")
-    if (error) {
-      console.error("Napaka pri nalaganju:", error)
-    } else {
-      setMaterials(data || [])
-    }
+    const { data, error } = await supabase.from("materials").select("id, name, unit, current_stock, min_stock, notes")
+    if (error) console.error("Napaka pri nalaganju:", error)
+    else setMaterials(data || [])
     setLoading(false)
   }
 
   const addMaterial = async () => {
-    const { error } = await supabase
-      .from("materials")
-      .insert([{
-        name: newMaterial.name,
-        unit: newMaterial.unit,
-        current_stock: 0,
-        min_stock: parseInt(newMaterial.min_stock.toString()),
-        notes: newMaterial.notes
-      }])
+    const { error } = await supabase.from("materials").insert([{
+      name: newMaterial.name, unit: newMaterial.unit,
+      current_stock: 0, min_stock: parseInt(newMaterial.min_stock.toString()), notes: newMaterial.notes
+    }])
     if (!error) {
       fetchMaterials()
       setShowModal(false)
@@ -70,9 +63,7 @@ export default function PregledZaloge() {
   }
 
   if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>
-      Nalagam...
-    </div>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
   const nizkaZaloga = materials.filter(m => m.current_stock > 0 && m.current_stock < m.min_stock).length
@@ -80,22 +71,13 @@ export default function PregledZaloge() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-
-      {/* SIDEBAR */}
       <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "#c41230", padding: "16px 20px" }}>
           <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
           <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
         </div>
         <div style={{ padding: "16px 12px", flex: 1 }}>
-          {[
-            { icon: "📊", label: "Pregled zaloge", active: true, href: "/pregled-zaloge" },
-            { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-            { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-            { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
-            { icon: "🏭", label: "Dobavitelji", active: false, href: "#" },
-            { icon: "📈", label: "Poročila", active: false, href: "#" },
-          ].map((item) => (
+          {sidebarItems.map((item) => (
             <a key={item.label} href={item.href} style={{
               display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
               background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
@@ -107,31 +89,21 @@ export default function PregledZaloge() {
             </a>
           ))}
         </div>
-        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>
-          © 2026 Compart
-        </div>
+        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
       </div>
 
-      {/* GLAVNA VSEBINA */}
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
           <div>
             <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Pregled zaloge</h1>
-            <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>
-              Skupen pregled vseh materialov v skladišču.
-            </p>
+            <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Skupen pregled vseh materialov v skladišču.</p>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
-            <button style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>
-              Izvozi Excel
-            </button>
-            <button onClick={() => setShowModal(true)} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
-              + Dodaj material
-            </button>
+            <button style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>Izvozi Excel</button>
+            <button onClick={() => setShowModal(true)} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
           </div>
         </div>
 
-        {/* KARTICE */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
           {[
             { value: materials.length, label: "Vsi materiali", color: "#c41230" },
@@ -146,15 +118,12 @@ export default function PregledZaloge() {
           ))}
         </div>
 
-        {/* TABELA */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
                 {["Naziv materiala", "Enota", "Zaloga", "Min. zaloga", "Status", "Akcije"].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {h}
-                  </th>
+                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -189,7 +158,6 @@ export default function PregledZaloge() {
         </div>
       </div>
 
-      {/* MODAL */}
       {showModal && (
         <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "480px", borderRadius: "8px", padding: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>

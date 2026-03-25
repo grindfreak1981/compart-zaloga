@@ -18,14 +18,21 @@ interface WorkOrderItem {
 interface WorkOrder {
   id: number
   title: string
-  customer: string
+  customer_id: number | null
   status: string
   created_at: string
+  customers?: { name: string }
+}
+
+interface Customer {
+  id: number
+  name: string
 }
 
 export default function Delniki() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -33,7 +40,7 @@ export default function Delniki() {
   const [success, setSuccess] = useState(false)
 
   const [title, setTitle] = useState("")
-  const [customer, setCustomer] = useState("")
+  const [customerId, setCustomerId] = useState<number | null>(null)
   const [items, setItems] = useState<WorkOrderItem[]>([{ material_id: 0, quantity: 0 }])
 
   const supabase = createClient()
@@ -42,9 +49,11 @@ export default function Delniki() {
 
   const fetchAll = async () => {
     const { data: mats } = await supabase.from("materials").select("id, name, unit, current_stock").order("name")
-    const { data: wos } = await supabase.from("work_orders").select("*").order("created_at", { ascending: false })
+    const { data: wos } = await supabase.from("work_orders").select("*, customers(name)").order("created_at", { ascending: false })
+    const { data: custs } = await supabase.from("customers").select("id, name").order("name")
     setMaterials(mats || [])
     setWorkOrders(wos || [])
+    setCustomers(custs || [])
     setLoading(false)
   }
 
@@ -58,21 +67,15 @@ export default function Delniki() {
 
   const handleCreate = async () => {
     setError("")
-    if (!title.trim()) {
-      setError("Vpiši naziv delovnega naloga.")
-      return
-    }
+    if (!title.trim()) { setError("Vpiši naziv delovnega naloga."); return }
     const validItems = items.filter(it => it.material_id > 0 && it.quantity > 0)
-    if (validItems.length === 0) {
-      setError("Dodaj vsaj en material s količino.")
-      return
-    }
+    if (validItems.length === 0) { setError("Dodaj vsaj en material s količino."); return }
 
     setSaving(true)
 
     const { data: wo, error: woError } = await supabase
       .from("work_orders")
-      .insert([{ title: title.trim(), customer: customer.trim(), status: "open" }])
+      .insert([{ title: title.trim(), customer_id: customerId, status: "open" }])
       .select()
       .single()
 
@@ -93,7 +96,7 @@ export default function Delniki() {
     }
 
     setTitle("")
-    setCustomer("")
+    setCustomerId(null)
     setItems([{ material_id: 0, quantity: 0 }])
     setShowModal(false)
     setSaving(false)
@@ -108,15 +111,8 @@ export default function Delniki() {
       .select("*")
       .eq("work_order_id", wo.id)
 
-    if (fetchError) {
-      alert("Napaka pri branju postavk: " + fetchError.message)
-      return
-    }
-
-    if (!woItems || woItems.length === 0) {
-      alert("Ta nalog nima materialov.")
-      return
-    }
+    if (fetchError) { alert("Napaka pri branju postavk: " + fetchError.message); return }
+    if (!woItems || woItems.length === 0) { alert("Ta nalog nima materialov."); return }
 
     for (const item of woItems) {
       const mat = materials.find(m => m.id === item.material_id)
@@ -127,19 +123,13 @@ export default function Delniki() {
         .update({ current_stock: mat.current_stock - item.quantity })
         .eq("id", item.material_id)
 
-      if (updateError) {
-        alert("Napaka pri odštevanju zaloge: " + updateError.message)
-        return
-      }
+      if (updateError) { alert("Napaka pri odštevanju zaloge: " + updateError.message); return }
 
       const { error: movError } = await supabase
         .from("stock_movements")
         .insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
 
-      if (movError) {
-        alert("Napaka pri stock_movements: " + movError.message)
-        return
-      }
+      if (movError) { alert("Napaka pri stock_movements: " + movError.message); return }
     }
 
     const { error: closeError } = await supabase
@@ -147,10 +137,7 @@ export default function Delniki() {
       .update({ status: "closed" })
       .eq("id", wo.id)
 
-    if (closeError) {
-      alert("Napaka pri zaključku naloga: " + closeError.message)
-      return
-    }
+    if (closeError) { alert("Napaka pri zaključku naloga: " + closeError.message); return }
 
     fetchAll()
   }
@@ -161,28 +148,29 @@ export default function Delniki() {
     return { label: status, color: "#6b7280", bg: "#f9fafb" }
   }
 
+  const sidebarItems = [
+    { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
+    { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
+    { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
+    { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
+    { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
+    { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
+    { icon: "📈", label: "Poročila", active: false, href: "#" },
+  ]
+
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-
-      {/* SIDEBAR */}
       <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
         <div style={{ background: "#c41230", padding: "16px 20px" }}>
           <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
           <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
         </div>
         <div style={{ padding: "16px 12px", flex: 1 }}>
-          {[
-            { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
-            { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-            { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-            { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
-            { icon: "🏭", label: "Dobavitelji", active: false, href: "#" },
-            { icon: "📈", label: "Poročila", active: false, href: "#" },
-          ].map((item) => (
+          {sidebarItems.map((item) => (
             <a key={item.label} href={item.href} style={{
               display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
               background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
@@ -197,7 +185,6 @@ export default function Delniki() {
         <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
       </div>
 
-      {/* VSEBINA */}
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
           <div>
@@ -237,7 +224,7 @@ export default function Delniki() {
                   <tr key={wo.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: "13px" }}>#{wo.id}</td>
                     <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{wo.title}</td>
-                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customer || "—"}</td>
+                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customers?.name || "—"}</td>
                     <td style={{ padding: "12px 16px" }}>
                       <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>
                         {badge.label}
@@ -260,7 +247,6 @@ export default function Delniki() {
         </div>
       </div>
 
-      {/* MODAL */}
       {showModal && (
         <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "560px", maxHeight: "85vh", overflowY: "auto", borderRadius: "8px", padding: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
@@ -280,10 +266,14 @@ export default function Delniki() {
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Npr. Tisk posterjev za stranko X"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
             </div>
+
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Stranka</label>
-              <input value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Ime stranke"
-                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
+              <select value={customerId || ""} onChange={e => setCustomerId(e.target.value ? parseInt(e.target.value) : null)}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
+                <option value="">-- Izberi stranko --</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
 
             <div style={{ marginBottom: "20px" }}>

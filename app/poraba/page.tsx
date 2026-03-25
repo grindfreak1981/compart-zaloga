@@ -10,6 +10,16 @@ interface Material {
   current_stock: number
 }
 
+const sidebarItems = [
+  { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
+  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
+  { icon: "📤", label: "Poraba", active: true, href: "/poraba" },
+  { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
+  { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
+  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
+  { icon: "📈", label: "Poročila", active: false, href: "#" },
+]
+
 export default function Poraba() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,14 +71,7 @@ export default function Poraba() {
           <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
         </div>
         <div style={{ padding: "16px 12px", flex: 1 }}>
-          {[
-            { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
-            { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-            { icon: "📤", label: "Poraba", active: true, href: "/poraba" },
-            { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
-            { icon: "🏭", label: "Dobavitelji", active: false, href: "#" },
-            { icon: "📈", label: "Poročila", active: false, href: "#" },
-          ].map((item) => (
+          {sidebarItems.map((item) => (
             <a key={item.label} href={item.href} style={{
               display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
               background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
