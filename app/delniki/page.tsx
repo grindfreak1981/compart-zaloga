@@ -16,7 +16,7 @@ interface WorkOrderItem {
 }
 
 interface WorkOrder {
-  id: string
+  id: number
   title: string
   customer: string
   status: string
@@ -38,9 +38,7 @@ export default function Delniki() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchAll()
-  }, [])
+  useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
     const { data: mats } = await supabase.from("materials").select("id, name, unit, current_stock").order("name")
@@ -72,7 +70,6 @@ export default function Delniki() {
 
     setSaving(true)
 
-    // 1. Ustvari work order
     const { data: wo, error: woError } = await supabase
       .from("work_orders")
       .insert([{ title: title.trim(), customer: customer.trim(), status: "open" }])
@@ -85,7 +82,6 @@ export default function Delniki() {
       return
     }
 
-    // 2. Dodaj postavke
     const { error: itemsError } = await supabase.from("work_order_items").insert(
       validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity }))
     )
@@ -96,7 +92,6 @@ export default function Delniki() {
       return
     }
 
-    // Reset
     setTitle("")
     setCustomer("")
     setItems([{ material_id: 0, quantity: 0 }])
@@ -107,15 +102,22 @@ export default function Delniki() {
     setTimeout(() => setSuccess(false), 3000)
   }
 
-  const closeWorkOrder = async (id: string, woItems: WorkOrderItem[]) => {
-    // Odštej zalogo
-    for (const item of woItems) {
-      const mat = materials.find(m => m.id === item.material_id)
-      if (!mat) continue
-      await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
-      await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: "Delovni nalog" }])
+  const closeWorkOrder = async (wo: WorkOrder) => {
+    const { data: woItems } = await supabase
+      .from("work_order_items")
+      .select("*")
+      .eq("work_order_id", wo.id)
+
+    if (woItems) {
+      for (const item of woItems) {
+        const mat = materials.find(m => m.id === item.material_id)
+        if (!mat) continue
+        await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
+        await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
+      }
     }
-    await supabase.from("work_orders").update({ status: "closed" }).eq("id", id)
+
+    await supabase.from("work_orders").update({ status: "closed" }).eq("id", wo.id)
     fetchAll()
   }
 
@@ -179,12 +181,11 @@ export default function Delniki() {
           </div>
         )}
 
-        {/* TABELA */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Naziv", "Stranka", "Status", "Datum", "Akcije"].map(h => (
+                {["#", "Naziv", "Stranka", "Status", "Datum", "Akcije"].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -192,7 +193,7 @@ export default function Delniki() {
             <tbody>
               {workOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                  <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
                     Še ni delovnih nalogov. Klikni <strong>+ Nov delovni nalog</strong>.
                   </td>
                 </tr>
@@ -200,6 +201,7 @@ export default function Delniki() {
                 const badge = getStatusBadge(wo.status)
                 return (
                   <tr key={wo.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: "13px" }}>#{wo.id}</td>
                     <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{wo.title}</td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customer || "—"}</td>
                     <td style={{ padding: "12px 16px" }}>
@@ -210,7 +212,7 @@ export default function Delniki() {
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{new Date(wo.created_at).toLocaleDateString("sl-SI")}</td>
                     <td style={{ padding: "12px 16px" }}>
                       {wo.status === "open" && (
-                        <button onClick={() => closeWorkOrder(wo.id, [])}
+                        <button onClick={() => closeWorkOrder(wo)}
                           style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
                           ✅ Zaključi
                         </button>
