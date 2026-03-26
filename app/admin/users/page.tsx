@@ -22,6 +22,12 @@ const PERMISSION_LABELS: Record<string, string> = {
   view_reports: "📈 Poročila",
 }
 
+const roleColors: Record<string, { color: string; bg: string; label: string }> = {
+  admin: { color: "#dc2626", bg: "#fee2e2", label: "🔴 Admin" },
+  manager: { color: "#d97706", bg: "#fef3c7", label: "🟡 Manager" },
+  worker: { color: "#059669", bg: "#dcfce7", label: "🟢 Delavec" },
+}
+
 export default function AdminUsers() {
   const { profile, loading: profileLoading } = useProfile()
   const [users, setUsers] = useState<Profile[]>([])
@@ -32,7 +38,6 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-
   const [editForm, setEditForm] = useState({ role: "worker", permissions: {} as Record<string, boolean> })
   const [addForm, setAddForm] = useState({ email: "", full_name: "", password: "", role: "worker", permissions: {} as Record<string, boolean> })
 
@@ -75,10 +80,7 @@ export default function AdminUsers() {
 
   const handleAddUser = async () => {
     setError("")
-    if (!addForm.email || !addForm.password || !addForm.full_name) {
-      setError("Izpolni vsa obvezna polja.")
-      return
-    }
+    if (!addForm.email || !addForm.password || !addForm.full_name) { setError("Izpolni vsa obvezna polja."); return }
     setSaving(true)
     const res = await fetch("/api/admin/create-user", {
       method: "POST",
@@ -99,16 +101,6 @@ export default function AdminUsers() {
     setSuccess("Uporabnik uspešno dodan!")
     fetchUsers()
     setTimeout(() => setSuccess(""), 3000)
-  }
-
-  const togglePermission = (key: string, form: Record<string, boolean>, setForm: (f: any) => void) => {
-    setForm((prev: any) => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }))
-  }
-
-  const roleColors: Record<string, { color: string; bg: string; label: string }> = {
-    admin: { color: "#dc2626", bg: "#fee2e2", label: "🔴 Admin" },
-    manager: { color: "#d97706", bg: "#fef3c7", label: "🟡 Manager" },
-    worker: { color: "#059669", bg: "#dcfce7", label: "🟢 Delavec" },
   }
 
   if (profileLoading || loading) return (
@@ -179,7 +171,6 @@ export default function AdminUsers() {
           </table>
         </div>
 
-        {/* Legenda vlog */}
         <div style={{ marginTop: "24px", background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px" }}>
           <h3 style={{ fontSize: "14px", fontWeight: "bold", color: "#111827", margin: "0 0 12px 0" }}>Razlaga vlog</h3>
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
@@ -207,16 +198,11 @@ export default function AdminUsers() {
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>Uredi uporabnika</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
-
             <div style={{ background: "#f9fafb", borderRadius: "6px", padding: "12px 16px", marginBottom: "20px" }}>
               <div style={{ fontWeight: "500", fontSize: "14px", color: "#111827" }}>{editUser.full_name}</div>
               <div style={{ fontSize: "12px", color: "#6b7280" }}>{editUser.email}</div>
             </div>
-
-            {error && (
-              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
-            )}
-
+            {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Vloga</label>
               <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })}
@@ -226,32 +212,23 @@ export default function AdminUsers() {
                 <option value="worker">🟢 Delavec</option>
               </select>
             </div>
-
             {editForm.role === "worker" && (
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Dovoljenja za delavca</label>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Dovoljenja</label>
                 <div style={{ border: "1px solid #e5e7eb", borderRadius: "6px", overflow: "hidden" }}>
                   {Object.entries(PERMISSION_LABELS).map(([key, label], i) => (
                     <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: i < Object.keys(PERMISSION_LABELS).length - 1 ? "1px solid #f3f4f6" : "none", background: i % 2 === 0 ? "white" : "#fafafa" }}>
                       <span style={{ fontSize: "13px", color: "#374151" }}>{label}</span>
                       <button
                         onClick={() => setEditForm(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }))}
-                        style={{
-                          width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer",
-                          background: editForm.permissions[key] ? "#c41230" : "#d1d5db",
-                          position: "relative", transition: "background 0.2s"
-                        }}>
-                        <span style={{
-                          position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white",
-                          transition: "left 0.2s", left: editForm.permissions[key] ? "23px" : "3px"
-                        }} />
+                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: editForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative", transition: "background 0.2s" }}>
+                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", transition: "left 0.2s", left: editForm.permissions[key] ? "23px" : "3px" }} />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>
               <button onClick={handleSave} disabled={saving}
@@ -271,11 +248,7 @@ export default function AdminUsers() {
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>Dodaj uporabnika</h2>
               <button onClick={() => setShowAddModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
-
-            {error && (
-              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
-            )}
-
+            {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             {[
               { label: "Ime in priimek *", key: "full_name", type: "text", placeholder: "Janez Novak" },
               { label: "Email *", key: "email", type: "email", placeholder: "janez@podjetje.si" },
@@ -291,7 +264,6 @@ export default function AdminUsers() {
                   style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
             ))}
-
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Vloga</label>
               <select value={addForm.role} onChange={e => setAddForm({ ...addForm, role: e.target.value })}
@@ -301,7 +273,6 @@ export default function AdminUsers() {
                 <option value="worker">🟢 Delavec</option>
               </select>
             </div>
-
             {addForm.role === "worker" && (
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Dovoljenja</label>
@@ -311,22 +282,14 @@ export default function AdminUsers() {
                       <span style={{ fontSize: "13px", color: "#374151" }}>{label}</span>
                       <button
                         onClick={() => setAddForm(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }))}
-                        style={{
-                          width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer",
-                          background: addForm.permissions[key] ? "#c41230" : "#d1d5db",
-                          position: "relative", transition: "background 0.2s"
-                        }}>
-                        <span style={{
-                          position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white",
-                          transition: "left 0.2s", left: addForm.permissions[key] ? "23px" : "3px"
-                        }} />
+                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: addForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative", transition: "background 0.2s" }}>
+                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", transition: "left 0.2s", left: addForm.permissions[key] ? "23px" : "3px" }} />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowAddModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>
               <button onClick={handleAddUser} disabled={saving}
@@ -340,4 +303,3 @@ export default function AdminUsers() {
     </div>
   )
 }
-a
