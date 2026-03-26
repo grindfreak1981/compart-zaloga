@@ -1,8 +1,8 @@
-import { createServerClient } from "@supabase/ssr"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export default async function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const response = NextResponse.next()
 
   const supabase = createServerClient(
@@ -24,13 +24,21 @@ export default async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user && !request.nextUrl.pathname.startsWith("/login")) {
-    return NextResponse.redirect(new URL("/login", request.url))
+  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return response
 }
 
 export const config = {
-  matcher: ["/pregled-zaloge/:path*", "/prevzem/:path*", "/poraba/:path*"],
+  matcher: [
+    '/pregled-zaloge/:path*',
+    '/prevzem/:path*',
+    '/poraba/:path*',
+    '/delniki/:path*',
+    '/stranke/:path*',
+    '/dobavitelji/:path*',
+    '/porocila/:path*',
+  ],
 }
