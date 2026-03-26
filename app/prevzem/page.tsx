@@ -11,6 +11,7 @@ interface Material {
 }
 
 const sidebarItems = [
+  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
   { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
   { icon: "📥", label: "Prevzem blaga", active: true, href: "/prevzem" },
   { icon: "📤", label: "Poraba", active: false, href: "/poraba" },

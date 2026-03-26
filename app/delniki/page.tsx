@@ -31,6 +31,7 @@ interface Customer {
 }
 
 const sidebarItems = [
+  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
   { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
   { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
   { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
@@ -103,13 +104,10 @@ export default function Delniki() {
     for (const item of woItems) {
       const mat = materials.find(m => m.id === item.material_id)
       if (!mat) continue
-      const { error: updateError } = await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
-      if (updateError) { alert("Napaka: " + updateError.message); return }
-      const { error: movError } = await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
-      if (movError) { alert("Napaka: " + movError.message); return }
+      await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
+      await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
     }
-    const { error: closeError } = await supabase.from("work_orders").update({ status: "closed" }).eq("id", wo.id)
-    if (closeError) { alert("Napaka: " + closeError.message); return }
+    await supabase.from("work_orders").update({ status: "closed" }).eq("id", wo.id)
     fetchAll()
   }
 

@@ -14,6 +14,7 @@ interface Customer {
 }
 
 const sidebarItems = [
+  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
   { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
   { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
   { icon: "📤", label: "Poraba", active: false, href: "/poraba" },

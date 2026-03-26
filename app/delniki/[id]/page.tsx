@@ -21,6 +21,7 @@ interface WorkOrderItem {
 }
 
 const sidebarItems = [
+  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
   { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
   { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
   { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
@@ -45,21 +46,9 @@ export default function DelnikDetail() {
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
-    const { data: wo } = await supabase
-      .from("work_orders")
-      .select("*, customers(name)")
-      .eq("id", id)
-      .single()
-
-    const { data: woItems } = await supabase
-      .from("work_order_items")
-      .select("*, materials(name, unit)")
-      .eq("work_order_id", id)
-
-    const { data: mats } = await supabase
-      .from("materials")
-      .select("id, name, unit, current_stock")
-
+    const { data: wo } = await supabase.from("work_orders").select("*, customers(name)").eq("id", id).single()
+    const { data: woItems } = await supabase.from("work_order_items").select("*, materials(name, unit)").eq("work_order_id", id)
+    const { data: mats } = await supabase.from("materials").select("id, name, unit, current_stock")
     setWorkOrder(wo)
     setItems(woItems || [])
     setMaterials(mats || [])
@@ -69,32 +58,13 @@ export default function DelnikDetail() {
   const closeWorkOrder = async () => {
     if (!workOrder) return
     setClosing(true)
-
     for (const item of items) {
       const mat = materials.find(m => m.id === item.material_id)
       if (!mat) continue
-
-      const { error: updateError } = await supabase
-        .from("materials")
-        .update({ current_stock: mat.current_stock - item.quantity })
-        .eq("id", item.material_id)
-
-      if (updateError) { alert("Napaka: " + updateError.message); setClosing(false); return }
-
-      const { error: movError } = await supabase
-        .from("stock_movements")
-        .insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${workOrder.title}` }])
-
-      if (movError) { alert("Napaka: " + movError.message); setClosing(false); return }
+      await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
+      await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${workOrder.title}` }])
     }
-
-    const { error: closeError } = await supabase
-      .from("work_orders")
-      .update({ status: "closed" })
-      .eq("id", workOrder.id)
-
-    if (closeError) { alert("Napaka: " + closeError.message); setClosing(false); return }
-
+    await supabase.from("work_orders").update({ status: "closed" }).eq("id", workOrder.id)
     setClosing(false)
     fetchAll()
   }
@@ -153,8 +123,6 @@ export default function DelnikDetail() {
       </div>
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
-
-        {/* NAZAJ */}
         <button onClick={() => router.push("/delniki")} style={{
           background: "none", border: "none", cursor: "pointer", color: "#6b7280",
           fontSize: "13px", marginBottom: "24px", padding: 0, display: "flex", alignItems: "center", gap: "6px"
@@ -162,7 +130,6 @@ export default function DelnikDetail() {
           ← Nazaj na delovne naloge
         </button>
 
-        {/* HEADER */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
@@ -188,7 +155,6 @@ export default function DelnikDetail() {
           )}
         </div>
 
-        {/* MATERIALI */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
             <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#111827", margin: 0 }}>Materiali na nalogu</h2>
@@ -220,4 +186,3 @@ export default function DelnikDetail() {
     </div>
   )
 }
-

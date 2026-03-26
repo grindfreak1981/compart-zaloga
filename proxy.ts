@@ -33,6 +33,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/',
     '/pregled-zaloge/:path*',
     '/prevzem/:path*',
     '/poraba/:path*',

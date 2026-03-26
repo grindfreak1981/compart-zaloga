@@ -24,6 +24,7 @@ interface Material {
 }
 
 const sidebarItems = [
+  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
   { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
   { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
   { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
@@ -50,18 +51,12 @@ export default function Porocila() {
     setLoading(false)
   }
 
-  // Poraba po materialih (top 10)
   const porabaPoMaterialih = materials.map(mat => {
-    const poraba = movements
-      .filter(m => m.material_id === mat.id && m.type === "out")
-      .reduce((sum, m) => sum + Number(m.quantity), 0)
-    const prevzem = movements
-      .filter(m => m.material_id === mat.id && m.type === "in")
-      .reduce((sum, m) => sum + Number(m.quantity), 0)
+    const poraba = movements.filter(m => m.material_id === mat.id && m.type === "out").reduce((sum, m) => sum + Number(m.quantity), 0)
+    const prevzem = movements.filter(m => m.material_id === mat.id && m.type === "in").reduce((sum, m) => sum + Number(m.quantity), 0)
     return { name: mat.name.length > 20 ? mat.name.substring(0, 20) + "..." : mat.name, poraba, prevzem, unit: mat.unit }
   }).filter(m => m.poraba > 0 || m.prevzem > 0).sort((a, b) => b.poraba - a.poraba).slice(0, 10)
 
-  // Gibanje zaloge po dnevih (zadnjih 30 dni)
   const zadnjih30 = Array.from({ length: 30 }, (_, i) => {
     const d = new Date()
     d.setDate(d.getDate() - (29 - i))
@@ -69,24 +64,20 @@ export default function Porocila() {
   })
 
   const gibanjePoDnevih = zadnjih30.map(dan => {
-    const prevzem = movements
-      .filter(m => m.created_at.startsWith(dan) && m.type === "in")
-      .reduce((sum, m) => sum + Number(m.quantity), 0)
-    const poraba = movements
-      .filter(m => m.created_at.startsWith(dan) && m.type === "out")
-      .reduce((sum, m) => sum + Number(m.quantity), 0)
-    return {
-      dan: dan.substring(5),
-      prevzem,
-      poraba,
-    }
+    const prevzem = movements.filter(m => m.created_at.startsWith(dan) && m.type === "in").reduce((sum, m) => sum + Number(m.quantity), 0)
+    const poraba = movements.filter(m => m.created_at.startsWith(dan) && m.type === "out").reduce((sum, m) => sum + Number(m.quantity), 0)
+    return { dan: dan.substring(5), prevzem, poraba }
   })
 
-  // Statistike
   const skupnaPoraba = movements.filter(m => m.type === "out").reduce((sum, m) => sum + Number(m.quantity), 0)
   const skupniPrevzem = movements.filter(m => m.type === "in").reduce((sum, m) => sum + Number(m.quantity), 0)
   const kriticniMateriali = materials.filter(m => m.current_stock === 0).length
   const nizkaZaloga = materials.filter(m => m.current_stock > 0 && m.current_stock < m.min_stock).length
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/login"
+  }
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
@@ -112,7 +103,16 @@ export default function Porocila() {
             </a>
           ))}
         </div>
-        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
+        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
+          <button onClick={handleLogout} style={{
+            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
+            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
+            textAlign: "left", border: "none", marginBottom: "8px"
+          }}>
+            🚪&nbsp;&nbsp;Odjava
+          </button>
+          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
+        </div>
       </div>
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
@@ -121,7 +121,6 @@ export default function Porocila() {
           <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Pregled porabe in gibanja zaloge.</p>
         </div>
 
-        {/* KARTICE */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
           {[
             { value: skupniPrevzem.toLocaleString(), label: "Skupni prevzem", color: "#059669" },
@@ -136,7 +135,6 @@ export default function Porocila() {
           ))}
         </div>
 
-        {/* GRAF - Gibanje zadnjih 30 dni */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "24px", marginBottom: "24px" }}>
           <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#111827", marginTop: 0, marginBottom: "20px" }}>Gibanje zaloge — zadnjih 30 dni</h2>
           {gibanjePoDnevih.every(d => d.prevzem === 0 && d.poraba === 0) ? (
@@ -156,7 +154,6 @@ export default function Porocila() {
           )}
         </div>
 
-        {/* GRAF - Poraba po materialih */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "24px", marginBottom: "24px" }}>
           <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#111827", marginTop: 0, marginBottom: "20px" }}>Poraba in prevzem po materialih (top 10)</h2>
           {porabaPoMaterialih.length === 0 ? (
@@ -176,7 +173,6 @@ export default function Porocila() {
           )}
         </div>
 
-        {/* TABELA - Trenutna zaloga */}
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <div style={{ padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
             <h2 style={{ fontSize: "16px", fontWeight: "bold", color: "#111827", margin: 0 }}>Trenutno stanje zaloge</h2>
