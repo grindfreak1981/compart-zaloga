@@ -79,7 +79,9 @@ export default function DelnikDetail() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
               <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>{workOrder.title}</h1>
-              <span style={{ padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>{badge.label}</span>
+              <span style={{ padding: "4px 12px", borderRadius: "999px", fontSize: "13px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>
+                {badge.label}
+              </span>
             </div>
             <div style={{ display: "flex", gap: "24px", fontSize: "14px", color: "#6b7280" }}>
               <span>#{workOrder.id}</span>
@@ -109,4 +111,20 @@ export default function DelnikDetail() {
             </thead>
             <tbody>
               {items.length === 0 ? (
-                <tr><td colSpan={3} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Ta nalog n
+                <tr>
+                  <td colSpan={3} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Ta nalog nima materialov.</td>
+                </tr>
+              ) : items.map((item, i) => (
+                <tr key={item.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                  <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{item.materials?.name || "—"}</td>
+                  <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{item.materials?.unit || "—"}</td>
+                  <td style={{ padding: "12px 16px", fontWeight: "600", color: "#c41230", fontSize: "13px" }}>{item.quantity.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
