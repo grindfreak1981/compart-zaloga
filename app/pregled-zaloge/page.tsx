@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
+import * as XLSX from "xlsx"
 
 interface Material {
   id: number
@@ -61,8 +62,7 @@ export default function PregledZaloge() {
     setSaving(true)
     if (editMaterial) {
       const { error: e } = await supabase.from("materials").update({
-        name: form.name.trim(),
-        unit: form.unit,
+        name: form.name.trim(), unit: form.unit,
         current_stock: parseFloat(form.current_stock.toString()) || 0,
         min_stock: parseInt(form.min_stock.toString()) || 0,
         notes: form.notes
@@ -70,8 +70,7 @@ export default function PregledZaloge() {
       if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     } else {
       const { error: e } = await supabase.from("materials").insert([{
-        name: form.name.trim(),
-        unit: form.unit,
+        name: form.name.trim(), unit: form.unit,
         current_stock: parseFloat(form.current_stock.toString()) || 0,
         min_stock: parseInt(form.min_stock.toString()) || 0,
         notes: form.notes
@@ -92,6 +91,22 @@ export default function PregledZaloge() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = "/login"
+  }
+
+  const exportExcel = () => {
+    const data = materials.map(m => ({
+      "Naziv materiala": m.name,
+      "Enota": m.unit,
+      "Trenutna zaloga": m.current_stock,
+      "Min. zaloga": m.min_stock,
+      "Status": m.current_stock === 0 ? "Kritično" : m.current_stock < m.min_stock ? "Nizko" : "OK",
+      "Opombe": m.notes || "",
+    }))
+    const ws = XLSX.utils.json_to_sheet(data)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Zaloga")
+    const datum = new Date().toLocaleDateString("sl-SI").replace(/\./g, "-")
+    XLSX.writeFile(wb, `zaloga-${datum}.xlsx`)
   }
 
   const getStatus = (stock: number, min: number) => {
@@ -146,7 +161,7 @@ export default function PregledZaloge() {
             <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Skupen pregled vseh materialov v skladišču.</p>
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
-            <button style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>Izvozi Excel</button>
+            <button onClick={exportExcel} style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>📥 Izvozi Excel</button>
             <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
           </div>
         </div>
