@@ -2,46 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
+import { useProfile } from "@/hooks/useProfile"
+import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import Sidebar from "@/components/Sidebar"
 import { useRouter } from "next/navigation"
 
-interface Material {
-  id: number
-  name: string
-  unit: string
-  current_stock: number
-}
-
-interface WorkOrderItem {
-  material_id: number
-  quantity: number
-}
-
-interface WorkOrder {
-  id: number
-  title: string
-  customer_id: number | null
-  status: string
-  created_at: string
-  customers?: { name: string }
-}
-
-interface Customer {
-  id: number
-  name: string
-}
-
-const sidebarItems = [
-  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
-  { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
-  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-  { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-  { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
-  { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
-  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-  { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
-]
+interface Material { id: number; name: string; unit: string; current_stock: number }
+interface WorkOrderItem { material_id: number; quantity: number }
+interface WorkOrder { id: number; title: string; customer_id: number | null; status: string; created_at: string; customers?: { name: string } }
+interface Customer { id: number; name: string }
 
 export default function Delniki() {
+  const { profile, loading: profileLoading } = useProfile()
   const [materials, setMaterials] = useState<Material[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -56,6 +28,7 @@ export default function Delniki() {
 
   const supabase = createClient()
   const router = useRouter()
+  const canEdit = hasPermission(profile, PERMISSIONS.EDIT_WORK_ORDERS)
 
   useEffect(() => { fetchAll() }, [])
 
@@ -85,22 +58,16 @@ export default function Delniki() {
     setSaving(true)
     const { data: wo, error: woError } = await supabase.from("work_orders").insert([{ title: title.trim(), customer_id: customerId, status: "open" }]).select().single()
     if (woError || !wo) { setError("Napaka: " + (woError?.message || "neznan problem")); setSaving(false); return }
-    const { error: itemsError } = await supabase.from("work_order_items").insert(validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity })))
-    if (itemsError) { setError("Napaka: " + itemsError.message); setSaving(false); return }
-    setTitle("")
-    setCustomerId(null)
-    setItems([{ material_id: 0, quantity: 0 }])
-    setShowModal(false)
-    setSaving(false)
-    setSuccess(true)
+    await supabase.from("work_order_items").insert(validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity })))
+    setTitle(""); setCustomerId(null); setItems([{ material_id: 0, quantity: 0 }])
+    setShowModal(false); setSaving(false); setSuccess(true)
     fetchAll()
     setTimeout(() => setSuccess(false), 3000)
   }
 
   const closeWorkOrder = async (wo: WorkOrder) => {
-    const { data: woItems, error: fetchError } = await supabase.from("work_order_items").select("*").eq("work_order_id", wo.id)
-    if (fetchError) { alert("Napaka: " + fetchError.message); return }
-    if (!woItems || woItems.length === 0) { alert("Ta nalog nima materialov."); return }
+    const { data: woItems } = await supabase.from("work_order_items").select("*").eq("work_order_id", wo.id)
+    if (!woItems) return
     for (const item of woItems) {
       const mat = materials.find(m => m.id === item.material_id)
       if (!mat) continue
@@ -111,52 +78,19 @@ export default function Delniki() {
     fetchAll()
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
-  }
-
   const getStatusBadge = (status: string) => {
     if (status === "open") return { label: "🟡 Odprt", color: "#d97706", bg: "#fffbeb" }
     if (status === "closed") return { label: "✅ Zaključen", color: "#059669", bg: "#f0fdf4" }
     return { label: status, color: "#6b7280", bg: "#f9fafb" }
   }
 
-  if (loading) return (
+  if (loading || profileLoading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-      <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "#c41230", padding: "16px 20px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
-          <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
-        </div>
-        <div style={{ padding: "16px 12px", flex: 1 }}>
-          {sidebarItems.map((item) => (
-            <a key={item.label} href={item.href} style={{
-              display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
-              background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
-              borderLeft: item.active ? "3px solid #c41230" : "3px solid transparent",
-              color: item.active ? "white" : "#9ca3af",
-              cursor: "pointer", fontSize: "13px", textDecoration: "none",
-            }}>
-              {item.icon}&nbsp;&nbsp;{item.label}
-            </a>
-          ))}
-        </div>
-        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
-          <button onClick={handleLogout} style={{
-            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
-            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
-            textAlign: "left", border: "none", marginBottom: "8px"
-          }}>
-            🚪&nbsp;&nbsp;Odjava
-          </button>
-          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
-        </div>
-      </div>
+      <Sidebar active="/delniki" profile={profile} />
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
@@ -164,33 +98,27 @@ export default function Delniki() {
             <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Delovni nalogi</h1>
             <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Ustvari nalog in ob zaključku se zaloga avtomatsko odšteje.</p>
           </div>
-          <button onClick={() => { setShowModal(true); setError("") }} style={{ padding: "10px 18px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
-            + Nov delovni nalog
-          </button>
+          {canEdit && (
+            <button onClick={() => { setShowModal(true); setError("") }} style={{ padding: "10px 18px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
+              + Nov delovni nalog
+            </button>
+          )}
         </div>
 
-        {success && (
-          <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#16a34a", fontWeight: "500", fontSize: "14px" }}>
-            ✅ Delovni nalog uspešno ustvarjen!
-          </div>
-        )}
+        {success && <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#16a34a", fontWeight: "500", fontSize: "14px" }}>✅ Delovni nalog uspešno ustvarjen!</div>}
 
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["#", "Naziv", "Stranka", "Status", "Datum", "Akcije"].map(h => (
+                {["#", "Naziv", "Stranka", "Status", "Datum", ...(canEdit ? ["Akcije"] : [])].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {workOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
-                    Še ni delovnih nalogov. Klikni <strong>+ Nov delovni nalog</strong>.
-                  </td>
-                </tr>
+                <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Še ni delovnih nalogov.</td></tr>
               ) : workOrders.map((wo, i) => {
                 const badge = getStatusBadge(wo.status)
                 return (
@@ -200,18 +128,16 @@ export default function Delniki() {
                     <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{wo.title}</td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customers?.name || "—"}</td>
                     <td style={{ padding: "12px 16px" }}>
-                      <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>
-                        {badge.label}
-                      </span>
+                      <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>{badge.label}</span>
                     </td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{new Date(wo.created_at).toLocaleDateString("sl-SI")}</td>
-                    <td style={{ padding: "12px 16px" }} onClick={e => e.stopPropagation()}>
-                      {wo.status === "open" && (
-                        <button onClick={() => closeWorkOrder(wo)} style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
-                          ✅ Zaključi
-                        </button>
-                      )}
-                    </td>
+                    {canEdit && (
+                      <td style={{ padding: "12px 16px" }} onClick={e => e.stopPropagation()}>
+                        {wo.status === "open" && (
+                          <button onClick={() => closeWorkOrder(wo)} style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✅ Zaključi</button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -227,9 +153,7 @@ export default function Delniki() {
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>Nov delovni nalog</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
-            {error && (
-              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
-            )}
+            {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Naziv naloga *</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Npr. Tisk posterjev za stranko X"
@@ -254,14 +178,10 @@ export default function Delniki() {
                   </select>
                   <input type="number" value={item.quantity} onChange={e => updateItem(i, "quantity", parseFloat(e.target.value) || 0)} placeholder="Kol."
                     style={{ flex: 1, padding: "9px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "13px" }} />
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#9ca3af" }}>×</button>
-                  )}
+                  {items.length > 1 && <button onClick={() => removeItem(i)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "18px", color: "#9ca3af" }}>×</button>}
                 </div>
               ))}
-              <button onClick={addItem} style={{ marginTop: "6px", padding: "7px 14px", border: "1px dashed #d1d5db", borderRadius: "6px", background: "transparent", cursor: "pointer", fontSize: "13px", color: "#6b7280" }}>
-                + Dodaj material
-              </button>
+              <button onClick={addItem} style={{ marginTop: "6px", padding: "7px 14px", border: "1px dashed #d1d5db", borderRadius: "6px", background: "transparent", cursor: "pointer", fontSize: "13px", color: "#6b7280" }}>+ Dodaj material</button>
             </div>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>

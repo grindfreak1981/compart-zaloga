@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
+import { useProfile } from "@/hooks/useProfile"
+import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import Sidebar from "@/components/Sidebar"
 import * as XLSX from "xlsx"
 
 interface Material {
@@ -13,18 +16,8 @@ interface Material {
   notes?: string
 }
 
-const sidebarItems = [
-  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
-  { icon: "📊", label: "Pregled zaloge", active: true, href: "/pregled-zaloge" },
-  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-  { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-  { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
-  { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
-  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-  { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
-]
-
 export default function PregledZaloge() {
+  const { profile, loading: profileLoading } = useProfile()
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -34,6 +27,7 @@ export default function PregledZaloge() {
   const [error, setError] = useState("")
 
   const supabase = createClient()
+  const canEdit = hasPermission(profile, PERMISSIONS.EDIT_STOCK)
 
   useEffect(() => { fetchMaterials() }, [])
 
@@ -62,20 +56,10 @@ export default function PregledZaloge() {
     if (!form.name.trim()) { setError("Vpiši naziv materiala."); return }
     setSaving(true)
     if (editMaterial) {
-      const { error: e } = await supabase.from("materials").update({
-        name: form.name.trim(), unit: form.unit,
-        current_stock: parseFloat(form.current_stock.toString()) || 0,
-        min_stock: parseInt(form.min_stock.toString()) || 0,
-        notes: form.notes
-      }).eq("id", editMaterial.id)
+      const { error: e } = await supabase.from("materials").update({ name: form.name.trim(), unit: form.unit, current_stock: parseFloat(form.current_stock.toString()) || 0, min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes }).eq("id", editMaterial.id)
       if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     } else {
-      const { error: e } = await supabase.from("materials").insert([{
-        name: form.name.trim(), unit: form.unit,
-        current_stock: parseFloat(form.current_stock.toString()) || 0,
-        min_stock: parseInt(form.min_stock.toString()) || 0,
-        notes: form.notes
-      }])
+      const { error: e } = await supabase.from("materials").insert([{ name: form.name.trim(), unit: form.unit, current_stock: parseFloat(form.current_stock.toString()) || 0, min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes }])
       if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     }
     setSaving(false)
@@ -89,16 +73,9 @@ export default function PregledZaloge() {
     fetchMaterials()
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
-  }
-
   const exportExcel = () => {
     const data = materials.map(m => ({
-      "Naziv materiala": m.name,
-      "Enota": m.unit,
-      "Trenutna zaloga": m.current_stock,
+      "Naziv materiala": m.name, "Enota": m.unit, "Trenutna zaloga": m.current_stock,
       "Min. zaloga": m.min_stock,
       "Status": m.current_stock === 0 ? "Kritično" : m.current_stock < m.min_stock ? "Nizko" : "OK",
       "Opombe": m.notes || "",
@@ -106,8 +83,7 @@ export default function PregledZaloge() {
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Zaloga")
-    const datum = new Date().toLocaleDateString("sl-SI").replace(/\./g, "-")
-    XLSX.writeFile(wb, `zaloga-${datum}.xlsx`)
+    XLSX.writeFile(wb, `zaloga-${new Date().toLocaleDateString("sl-SI").replace(/\./g, "-")}.xlsx`)
   }
 
   const getStatus = (stock: number, min: number) => {
@@ -116,7 +92,7 @@ export default function PregledZaloge() {
     return { label: "✅ OK", bg: "transparent", color: "#059669" }
   }
 
-  if (loading) return (
+  if (loading || profileLoading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
@@ -125,35 +101,7 @@ export default function PregledZaloge() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-      <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "#c41230", padding: "16px 20px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
-          <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
-        </div>
-        <div style={{ padding: "16px 12px", flex: 1 }}>
-          {sidebarItems.map((item) => (
-            <a key={item.label} href={item.href} style={{
-              display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
-              background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
-              borderLeft: item.active ? "3px solid #c41230" : "3px solid transparent",
-              color: item.active ? "white" : "#9ca3af",
-              cursor: "pointer", fontSize: "13px", textDecoration: "none",
-            }}>
-              {item.icon}&nbsp;&nbsp;{item.label}
-            </a>
-          ))}
-        </div>
-        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
-          <button onClick={handleLogout} style={{
-            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
-            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
-            textAlign: "left", border: "none", marginBottom: "8px"
-          }}>
-            🚪&nbsp;&nbsp;Odjava
-          </button>
-          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
-        </div>
-      </div>
+      <Sidebar active="/pregled-zaloge" profile={profile} />
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
@@ -163,7 +111,9 @@ export default function PregledZaloge() {
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button onClick={exportExcel} style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>📥 Izvozi Excel</button>
-            <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
+            {canEdit && (
+              <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
+            )}
           </div>
         </div>
 
@@ -185,7 +135,7 @@ export default function PregledZaloge() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Naziv materiala", "Enota", "Zaloga", "Min. zaloga", "Status", "Akcije"].map(h => (
+                {["Naziv materiala", "Enota", "Zaloga", "Min. zaloga", "Status", ...(canEdit ? ["Akcije"] : [])].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -193,8 +143,8 @@ export default function PregledZaloge() {
             <tbody>
               {materials.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
-                    Še ni dodanih materialov. Klikni <strong>+ Dodaj material</strong>.
+                  <td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                    Še ni dodanih materialov.
                   </td>
                 </tr>
               ) : materials.map((material, i) => {
@@ -210,10 +160,12 @@ export default function PregledZaloge() {
                         {status.label}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
-                      <button onClick={() => openEdit(material)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
-                      <button onClick={() => deleteMaterial(material.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
-                    </td>
+                    {canEdit && (
+                      <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
+                        <button onClick={() => openEdit(material)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
+                        <button onClick={() => deleteMaterial(material.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
+                      </td>
+                    )}
                   </tr>
                 )
               })}
@@ -229,9 +181,7 @@ export default function PregledZaloge() {
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>{editMaterial ? "Uredi material" : "Nov material"}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
-            {error && (
-              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
-            )}
+            {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Naziv materiala *</label>
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Npr. Tiskarski papir A4 80g"
@@ -241,13 +191,7 @@ export default function PregledZaloge() {
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Enota</label>
               <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
-                <option value="m²">m²</option>
-                <option value="m">m</option>
-                <option value="kg">kg</option>
-                <option value="kos">kos</option>
-                <option value="l">l</option>
-                <option value="rola">rola</option>
-                <option value="škatla">škatla</option>
+                {["m²", "m", "kg", "kos", "l", "rola", "škatla"].map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
             <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
@@ -264,7 +208,7 @@ export default function PregledZaloge() {
             </div>
             <div style={{ marginBottom: "24px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opombe</label>
-              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Dobavitelj, cena, opombe..."
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3}
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", resize: "vertical", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
