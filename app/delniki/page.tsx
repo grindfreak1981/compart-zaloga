@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 interface Material {
   id: number
@@ -53,6 +54,7 @@ export default function Delniki() {
   const [items, setItems] = useState<WorkOrderItem[]>([{ material_id: 0, quantity: 0 }])
 
   const supabase = createClient()
+  const router = useRouter()
 
   useEffect(() => { fetchAll() }, [])
 
@@ -194,7 +196,8 @@ export default function Delniki() {
               ) : workOrders.map((wo, i) => {
                 const badge = getStatusBadge(wo.status)
                 return (
-                  <tr key={wo.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                  <tr key={wo.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa", cursor: "pointer" }}
+                    onClick={() => router.push(`/delniki/${wo.id}`)}>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: "13px" }}>#{wo.id}</td>
                     <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{wo.title}</td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customers?.name || "—"}</td>
@@ -204,7 +207,7 @@ export default function Delniki() {
                       </span>
                     </td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{new Date(wo.created_at).toLocaleDateString("sl-SI")}</td>
-                    <td style={{ padding: "12px 16px" }}>
+                    <td style={{ padding: "12px 16px" }} onClick={e => e.stopPropagation()}>
                       {wo.status === "open" && (
                         <button onClick={() => closeWorkOrder(wo)} style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
                           ✅ Zaključi
