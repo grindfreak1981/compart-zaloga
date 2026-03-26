@@ -27,7 +27,7 @@ export default function PregledZaloge() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editMaterial, setEditMaterial] = useState<Material | null>(null)
-  const [form, setForm] = useState({ name: "", unit: "m²", min_stock: 0, notes: "" })
+  const [form, setForm] = useState({ name: "", unit: "m²", current_stock: 0, min_stock: 0, notes: "" })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
@@ -43,14 +43,14 @@ export default function PregledZaloge() {
 
   const openAdd = () => {
     setEditMaterial(null)
-    setForm({ name: "", unit: "m²", min_stock: 0, notes: "" })
+    setForm({ name: "", unit: "m²", current_stock: 0, min_stock: 0, notes: "" })
     setError("")
     setShowModal(true)
   }
 
   const openEdit = (m: Material) => {
     setEditMaterial(m)
-    setForm({ name: m.name, unit: m.unit, min_stock: m.min_stock, notes: m.notes || "" })
+    setForm({ name: m.name, unit: m.unit, current_stock: m.current_stock, min_stock: m.min_stock, notes: m.notes || "" })
     setError("")
     setShowModal(true)
   }
@@ -61,14 +61,20 @@ export default function PregledZaloge() {
     setSaving(true)
     if (editMaterial) {
       const { error: e } = await supabase.from("materials").update({
-        name: form.name.trim(), unit: form.unit,
-        min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes
+        name: form.name.trim(),
+        unit: form.unit,
+        current_stock: parseFloat(form.current_stock.toString()) || 0,
+        min_stock: parseInt(form.min_stock.toString()) || 0,
+        notes: form.notes
       }).eq("id", editMaterial.id)
       if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     } else {
       const { error: e } = await supabase.from("materials").insert([{
-        name: form.name.trim(), unit: form.unit,
-        current_stock: 0, min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes
+        name: form.name.trim(),
+        unit: form.unit,
+        current_stock: parseFloat(form.current_stock.toString()) || 0,
+        min_stock: parseInt(form.min_stock.toString()) || 0,
+        notes: form.notes
       }])
       if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     }
@@ -215,19 +221,24 @@ export default function PregledZaloge() {
               <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Npr. Tiskarski papir A4 80g"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
             </div>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Enota</label>
+              <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
+                <option value="m²">m²</option>
+                <option value="m">m</option>
+                <option value="kg">kg</option>
+                <option value="kos">kos</option>
+                <option value="l">l</option>
+                <option value="rola">rola</option>
+                <option value="škatla">škatla</option>
+              </select>
+            </div>
             <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Enota</label>
-                <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
-                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
-                  <option value="m²">m²</option>
-                  <option value="m">m</option>
-                  <option value="kg">kg</option>
-                  <option value="kos">kos</option>
-                  <option value="l">l</option>
-                  <option value="rola">rola</option>
-                  <option value="škatla">škatla</option>
-                </select>
+                <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Trenutna zaloga</label>
+                <input type="number" value={form.current_stock} onChange={e => setForm({ ...form, current_stock: parseFloat(e.target.value) || 0 })}
+                  style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Min. zaloga</label>
