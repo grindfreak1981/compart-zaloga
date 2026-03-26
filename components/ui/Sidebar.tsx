@@ -47,7 +47,9 @@ export default function Sidebar({ active, profile }: SidebarProps) {
 
       {profile && (
         <div style={{ padding: "12px 16px", borderBottom: "1px solid #2a2a2a", background: "#141414" }}>
-          <div style={{ fontSize: "13px", fontWeight: "500", color: "white", marginBottom: "2px" }}>{profile.full_name || profile.email}</div>
+          <div style={{ fontSize: "13px", fontWeight: "500", color: "white", marginBottom: "2px" }}>
+            {profile.full_name || profile.email}
+          </div>
           <div style={{ fontSize: "11px", color: "#9ca3af" }}>{roleLabel[profile.role] || profile.role}</div>
         </div>
       )}
@@ -82,3 +84,4 @@ export default function Sidebar({ active, profile }: SidebarProps) {
     </div>
   )
 }
+
