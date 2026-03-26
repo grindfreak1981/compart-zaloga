@@ -1,135 +1,88 @@
 "use client"
 
 import { useState } from "react"
+import { createClient } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
-export default function LoginPage() {
+export default function Login() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const [error, setError] = useState("")
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const supabase = createClient()
+  const router = useRouter()
+
+  const handleLogin = async () => {
+    setError("")
+    if (!email || !password) { setError("Vpiši email in geslo."); return }
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (error) {
-      alert(error.message)
-    } else {
-      router.push("/pregled-zaloge")
+    if (loginError) {
+      setError("Napačen email ali geslo.")
+      setLoading(false)
+      return
     }
-    setLoading(false)
+
+    router.push("/pregled-zaloge")
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleLogin()
   }
 
   return (
-    <div className="min-h-screen flex bg-white">
-      {/* Leva stran – enaka kot prej */}
-      <div className="hidden md:flex w-1/2 flex-col bg-[#1c1c1c] text-white">
-        <div className="bg-[#c41230] px-10 py-6 flex items-center justify-between">
-          <div className="bg-white text-[#1c1c1c] px-4 py-2 font-bold text-lg">
-            ▶Compart
-          </div>
-          <div className="text-xs text-red-100 text-right">
-            🛒 PRIJAVA<br />
-            <span className="text-[10px]">Interno orodje</span>
-          </div>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
+      <div style={{ background: "white", borderRadius: "12px", padding: "48px 40px", width: "400px", boxShadow: "0 4px 24px rgba(0,0,0,0.08)", border: "1px solid #e5e7eb" }}>
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div style={{ fontSize: "36px", marginBottom: "8px" }}>🖨️</div>
+          <h1 style={{ fontSize: "22px", fontWeight: "bold", color: "#111827", margin: 0 }}>Tiskarna</h1>
+          <p style={{ color: "#6b7280", fontSize: "14px", marginTop: "6px" }}>Vpis v sistem za upravljanje zaloge</p>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center px-16 space-y-6">
-          <div className="text-5xl">🖨️</div>
-          <div>
-            <h1 className="text-2xl font-semibold">Zaloga materialov</h1>
-            <p className="text-sm text-gray-300 mt-1">
-              Interno orodje za upravljanje zaloge tiskarskih materialov.
-            </p>
+        {error && (
+          <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "20px", color: "#dc2626", fontSize: "13px" }}>
+            ⚠️ {error}
           </div>
+        )}
 
-          <div className="h-px w-40 bg-[#c41230]" />
-
-          <ul className="space-y-3 text-sm text-gray-300">
-            <li>📦 Pregled zaloge v realnem času</li>
-            <li>⚠️ Opozorila pri nizki zalogi</li>
-            <li>🌐 Dostop odkoderkoli</li>
-          </ul>
+        <div style={{ marginBottom: "16px" }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="ime@podjetje.si"
+            style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
+          />
         </div>
 
-        <div className="px-10 py-4 text-[11px] text-gray-500">
-          © 2026 Compart · Interno orodje
+        <div style={{ marginBottom: "24px" }}>
+          <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Geslo</label>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="••••••••"
+            style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }}
+          />
         </div>
-      </div>
 
-      {/* Desna stran – login forma z auth */}
-      <div className="w-full md:w-1/2 flex items-center justify-center px-6 md:px-16">
-        <div className="w-full max-w-md space-y-6">
-          <div>
-            <h2 className="text-2xl font-semibold text-[#1c1c1c]">
-              Dobrodošli nazaj
-            </h2>
-            <p className="text-sm text-gray-500">
-              Prijavite se v sistem Compart.
-            </p>
-            <div className="mt-2 h-1 w-24 bg-[#c41230]" />
-          </div>
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{ width: "100%", padding: "12px", background: loading ? "#9ca3af" : "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: loading ? "not-allowed" : "pointer", fontSize: "15px", fontWeight: "bold" }}
+        >
+          {loading ? "Prijavljam..." : "Prijava"}
+        </button>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail naslov</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="ime@compart.si"
-                className="bg-[#f5f5f5] border-gray-200"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Geslo</Label>
-                <button
-                  type="button"
-                  className="text-xs text-[#c41230] hover:underline"
-                >
-                  Pozabljeno geslo?
-                </button>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="bg-[#f5f5f5] border-gray-200"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full bg-[#c41230] hover:bg-[#a00e26]"
-              disabled={loading}
-            >
-              {loading ? "Prijavljanje..." : "PRIJAVA →"}
-            </Button>
-
-            <div className="rounded border border-red-200 bg-[#fdf2f4] px-3 py-2 text-[11px] text-[#7f1d1d]">
-              🔒 Dostop je namenjen izključno pooblaščenim zaposlenim.
-            </div>
-          </form>
-        </div>
+        <p style={{ textAlign: "center", fontSize: "12px", color: "#9ca3af", marginTop: "24px", marginBottom: 0 }}>
+          © 2026 Compart
+        </p>
       </div>
     </div>
   )

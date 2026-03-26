@@ -62,6 +62,11 @@ export default function PregledZaloge() {
     return { label: "✅ OK", bg: "transparent", color: "#059669" }
   }
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/login"
+  }
+
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
@@ -89,7 +94,16 @@ export default function PregledZaloge() {
             </a>
           ))}
         </div>
-        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
+        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
+          <button onClick={handleLogout} style={{
+            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
+            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
+            textAlign: "left", border: "none", marginBottom: "8px"
+          }}>
+            🚪&nbsp;&nbsp;Odjava
+          </button>
+          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
+        </div>
       </div>
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>

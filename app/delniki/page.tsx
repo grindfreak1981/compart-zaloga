@@ -29,6 +29,16 @@ interface Customer {
   name: string
 }
 
+const sidebarItems = [
+  { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
+  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
+  { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
+  { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
+  { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
+  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
+  { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
+]
+
 export default function Delniki() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([])
@@ -38,7 +48,6 @@ export default function Delniki() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
-
   const [title, setTitle] = useState("")
   const [customerId, setCustomerId] = useState<number | null>(null)
   const [items, setItems] = useState<WorkOrderItem[]>([{ material_id: 0, quantity: 0 }])
@@ -70,31 +79,11 @@ export default function Delniki() {
     if (!title.trim()) { setError("Vpiši naziv delovnega naloga."); return }
     const validItems = items.filter(it => it.material_id > 0 && it.quantity > 0)
     if (validItems.length === 0) { setError("Dodaj vsaj en material s količino."); return }
-
     setSaving(true)
-
-    const { data: wo, error: woError } = await supabase
-      .from("work_orders")
-      .insert([{ title: title.trim(), customer_id: customerId, status: "open" }])
-      .select()
-      .single()
-
-    if (woError || !wo) {
-      setError("Napaka pri ustvarjanju naloga: " + (woError?.message || "neznan problem"))
-      setSaving(false)
-      return
-    }
-
-    const { error: itemsError } = await supabase.from("work_order_items").insert(
-      validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity }))
-    )
-
-    if (itemsError) {
-      setError("Napaka pri dodajanju materialov: " + itemsError.message)
-      setSaving(false)
-      return
-    }
-
+    const { data: wo, error: woError } = await supabase.from("work_orders").insert([{ title: title.trim(), customer_id: customerId, status: "open" }]).select().single()
+    if (woError || !wo) { setError("Napaka: " + (woError?.message || "neznan problem")); setSaving(false); return }
+    const { error: itemsError } = await supabase.from("work_order_items").insert(validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity })))
+    if (itemsError) { setError("Napaka: " + itemsError.message); setSaving(false); return }
     setTitle("")
     setCustomerId(null)
     setItems([{ material_id: 0, quantity: 0 }])
@@ -106,40 +95,25 @@ export default function Delniki() {
   }
 
   const closeWorkOrder = async (wo: WorkOrder) => {
-    const { data: woItems, error: fetchError } = await supabase
-      .from("work_order_items")
-      .select("*")
-      .eq("work_order_id", wo.id)
-
-    if (fetchError) { alert("Napaka pri branju postavk: " + fetchError.message); return }
+    const { data: woItems, error: fetchError } = await supabase.from("work_order_items").select("*").eq("work_order_id", wo.id)
+    if (fetchError) { alert("Napaka: " + fetchError.message); return }
     if (!woItems || woItems.length === 0) { alert("Ta nalog nima materialov."); return }
-
     for (const item of woItems) {
       const mat = materials.find(m => m.id === item.material_id)
       if (!mat) continue
-
-      const { error: updateError } = await supabase
-        .from("materials")
-        .update({ current_stock: mat.current_stock - item.quantity })
-        .eq("id", item.material_id)
-
-      if (updateError) { alert("Napaka pri odštevanju zaloge: " + updateError.message); return }
-
-      const { error: movError } = await supabase
-        .from("stock_movements")
-        .insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
-
-      if (movError) { alert("Napaka pri stock_movements: " + movError.message); return }
+      const { error: updateError } = await supabase.from("materials").update({ current_stock: mat.current_stock - item.quantity }).eq("id", item.material_id)
+      if (updateError) { alert("Napaka: " + updateError.message); return }
+      const { error: movError } = await supabase.from("stock_movements").insert([{ material_id: item.material_id, type: "out", quantity: item.quantity, note: `Delovni nalog: ${wo.title}` }])
+      if (movError) { alert("Napaka: " + movError.message); return }
     }
-
-    const { error: closeError } = await supabase
-      .from("work_orders")
-      .update({ status: "closed" })
-      .eq("id", wo.id)
-
-    if (closeError) { alert("Napaka pri zaključku naloga: " + closeError.message); return }
-
+    const { error: closeError } = await supabase.from("work_orders").update({ status: "closed" }).eq("id", wo.id)
+    if (closeError) { alert("Napaka: " + closeError.message); return }
     fetchAll()
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/login"
   }
 
   const getStatusBadge = (status: string) => {
@@ -147,16 +121,6 @@ export default function Delniki() {
     if (status === "closed") return { label: "✅ Zaključen", color: "#059669", bg: "#f0fdf4" }
     return { label: status, color: "#6b7280", bg: "#f9fafb" }
   }
-
-  const sidebarItems = [
-    { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
-    { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-    { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-    { icon: "📋", label: "Delovni nalogi", active: true, href: "/delniki" },
-    { icon: "👥", label: "Stranke", active: false, href: "/stranke" },
-    { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-    { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
-  ]
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
@@ -182,7 +146,16 @@ export default function Delniki() {
             </a>
           ))}
         </div>
-        <div style={{ padding: "12px 20px", fontSize: "10px", color: "#4b5563", borderTop: "1px solid #2a2a2a" }}>© 2026 Compart</div>
+        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
+          <button onClick={handleLogout} style={{
+            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
+            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
+            textAlign: "left", border: "none", marginBottom: "8px"
+          }}>
+            🚪&nbsp;&nbsp;Odjava
+          </button>
+          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
+        </div>
       </div>
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
@@ -233,8 +206,7 @@ export default function Delniki() {
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{new Date(wo.created_at).toLocaleDateString("sl-SI")}</td>
                     <td style={{ padding: "12px 16px" }}>
                       {wo.status === "open" && (
-                        <button onClick={() => closeWorkOrder(wo)}
-                          style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
+                        <button onClick={() => closeWorkOrder(wo)} style={{ padding: "5px 12px", background: "#059669", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>
                           ✅ Zaključi
                         </button>
                       )}
@@ -254,19 +226,14 @@ export default function Delniki() {
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>Nov delovni nalog</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
-
             {error && (
-              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>
-                ⚠️ {error}
-              </div>
+              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
             )}
-
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Naziv naloga *</label>
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Npr. Tisk posterjev za stranko X"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
             </div>
-
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Stranka</label>
               <select value={customerId || ""} onChange={e => setCustomerId(e.target.value ? parseInt(e.target.value) : null)}
@@ -275,7 +242,6 @@ export default function Delniki() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Materiali</label>
               {items.map((item, i) => (
@@ -296,7 +262,6 @@ export default function Delniki() {
                 + Dodaj material
               </button>
             </div>
-
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>
               <button onClick={handleCreate} disabled={saving}
