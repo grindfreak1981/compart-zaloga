@@ -26,45 +26,72 @@ export default function PregledZaloge() {
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [newMaterial, setNewMaterial] = useState({ name: "", unit: "m²", min_stock: 0, notes: "" })
+  const [editMaterial, setEditMaterial] = useState<Material | null>(null)
+  const [form, setForm] = useState({ name: "", unit: "m²", min_stock: 0, notes: "" })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
 
   const supabase = createClient()
 
   useEffect(() => { fetchMaterials() }, [])
 
   const fetchMaterials = async () => {
-    const { data, error } = await supabase.from("materials").select("id, name, unit, current_stock, min_stock, notes")
-    if (error) console.error("Napaka pri nalaganju:", error)
-    else setMaterials(data || [])
+    const { data } = await supabase.from("materials").select("id, name, unit, current_stock, min_stock, notes")
+    setMaterials(data || [])
     setLoading(false)
   }
 
-  const addMaterial = async () => {
-    const { error } = await supabase.from("materials").insert([{
-      name: newMaterial.name, unit: newMaterial.unit,
-      current_stock: 0, min_stock: parseInt(newMaterial.min_stock.toString()), notes: newMaterial.notes
-    }])
-    if (!error) {
-      fetchMaterials()
-      setShowModal(false)
-      setNewMaterial({ name: "", unit: "m²", min_stock: 0, notes: "" })
+  const openAdd = () => {
+    setEditMaterial(null)
+    setForm({ name: "", unit: "m²", min_stock: 0, notes: "" })
+    setError("")
+    setShowModal(true)
+  }
+
+  const openEdit = (m: Material) => {
+    setEditMaterial(m)
+    setForm({ name: m.name, unit: m.unit, min_stock: m.min_stock, notes: m.notes || "" })
+    setError("")
+    setShowModal(true)
+  }
+
+  const handleSave = async () => {
+    setError("")
+    if (!form.name.trim()) { setError("Vpiši naziv materiala."); return }
+    setSaving(true)
+    if (editMaterial) {
+      const { error: e } = await supabase.from("materials").update({
+        name: form.name.trim(), unit: form.unit,
+        min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes
+      }).eq("id", editMaterial.id)
+      if (e) { setError("Napaka: " + e.message); setSaving(false); return }
+    } else {
+      const { error: e } = await supabase.from("materials").insert([{
+        name: form.name.trim(), unit: form.unit,
+        current_stock: 0, min_stock: parseInt(form.min_stock.toString()) || 0, notes: form.notes
+      }])
+      if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     }
+    setSaving(false)
+    setShowModal(false)
+    fetchMaterials()
   }
 
   const deleteMaterial = async (id: number) => {
+    if (!confirm("Res želiš izbrisati ta material?")) return
     await supabase.from("materials").delete().eq("id", id)
     fetchMaterials()
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    window.location.href = "/login"
   }
 
   const getStatus = (stock: number, min: number) => {
     if (stock === 0) return { label: "🔴 Kritično", bg: "#fff5f5", color: "#dc2626" }
     if (stock < min) return { label: "⚠️ Nizko", bg: "#fffbeb", color: "#d97706" }
     return { label: "✅ OK", bg: "transparent", color: "#059669" }
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
   }
 
   if (loading) return (
@@ -114,7 +141,7 @@ export default function PregledZaloge() {
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             <button style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>Izvozi Excel</button>
-            <button onClick={() => setShowModal(true)} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
+            <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
           </div>
         </div>
 
@@ -161,8 +188,9 @@ export default function PregledZaloge() {
                         {status.label}
                       </span>
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <button onClick={() => deleteMaterial(material.id)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px" }}>🗑️</button>
+                    <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
+                      <button onClick={() => openEdit(material)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
+                      <button onClick={() => deleteMaterial(material.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
                     </td>
                   </tr>
                 )
@@ -176,18 +204,21 @@ export default function PregledZaloge() {
         <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "480px", borderRadius: "8px", padding: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>Nov material</h2>
+              <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>{editMaterial ? "Uredi material" : "Nov material"}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>
             </div>
+            {error && (
+              <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>
+            )}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Naziv materiala *</label>
-              <input value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} placeholder="Npr. Tiskarski papir A4 80g"
+              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Npr. Tiskarski papir A4 80g"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: "16px", marginBottom: "16px" }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Enota</label>
-                <select value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}
+                <select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}
                   style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
                   <option value="m²">m²</option>
                   <option value="m">m</option>
@@ -200,20 +231,20 @@ export default function PregledZaloge() {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Min. zaloga</label>
-                <input type="number" value={newMaterial.min_stock} onChange={e => setNewMaterial({ ...newMaterial, min_stock: parseInt(e.target.value) || 0 })}
+                <input type="number" value={form.min_stock} onChange={e => setForm({ ...form, min_stock: parseInt(e.target.value) || 0 })}
                   style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
             </div>
             <div style={{ marginBottom: "24px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opombe</label>
-              <textarea value={newMaterial.notes} onChange={e => setNewMaterial({ ...newMaterial, notes: e.target.value })} rows={3} placeholder="Dobavitelj, cena, opombe..."
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Dobavitelj, cena, opombe..."
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", resize: "vertical", boxSizing: "border-box" }} />
             </div>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={() => setShowModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>
-              <button onClick={addMaterial} disabled={!newMaterial.name}
-                style={{ padding: "10px 20px", background: newMaterial.name ? "#c41230" : "#9ca3af", color: "white", border: "none", borderRadius: "6px", cursor: newMaterial.name ? "pointer" : "not-allowed", fontSize: "13px", fontWeight: "bold" }}>
-                Shrani material
+              <button onClick={handleSave} disabled={saving}
+                style={{ padding: "10px 20px", background: saving ? "#9ca3af" : "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: saving ? "not-allowed" : "pointer", fontSize: "13px", fontWeight: "bold" }}>
+                {saving ? "Shranjujem..." : "Shrani"}
               </button>
             </div>
           </div>
