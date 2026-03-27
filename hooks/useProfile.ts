@@ -9,11 +9,24 @@ export function useProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
-      const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(data)
-      setLoading(false)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log("SESSION:", session)
+        if (!session?.user) { setLoading(false); return }
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        console.log("PROFILE DATA:", data, error)
+        setProfile(data)
+        setLoading(false)
+      } catch (e) {
+        console.log("PROFILE ERROR:", e)
+        setLoading(false)
+      }
     }
     fetchProfile()
   }, [])
