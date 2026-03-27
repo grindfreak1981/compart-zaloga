@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'manager' | 'worker'
+export type Role = 'admin' | 'vodja' | 'delavec'
 
 export interface Profile {
   id: string
@@ -26,7 +26,7 @@ export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS]
 
 export function hasPermission(profile: Profile | null, permission: PermissionKey): boolean {
   if (!profile) return false
-  if (profile.role === 'admin' || profile.role === 'manager') return true
+  if (profile.role === 'admin' || profile.role === 'vodja') return true
   return profile.permissions[permission] === true
 }
 

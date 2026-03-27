@@ -24,8 +24,8 @@ const PERMISSION_LABELS: Record<string, string> = {
 
 const roleColors: Record<string, { color: string; bg: string; label: string }> = {
   admin: { color: "#dc2626", bg: "#fee2e2", label: "🔴 Admin" },
-  manager: { color: "#d97706", bg: "#fef3c7", label: "🟡 Manager" },
-  worker: { color: "#059669", bg: "#dcfce7", label: "🟢 Delavec" },
+  vodja: { color: "#d97706", bg: "#fef3c7", label: "🟡 Vodja" },
+  delavec: { color: "#059669", bg: "#dcfce7", label: "🟢 Delavec" },
 }
 
 export default function AdminUsers() {
@@ -38,8 +38,8 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [editForm, setEditForm] = useState({ role: "worker", permissions: {} as Record<string, boolean> })
-  const [addForm, setAddForm] = useState({ username: "", full_name: "", password: "", role: "worker", permissions: {} as Record<string, boolean> })
+  const [editForm, setEditForm] = useState({ role: "delavec", permissions: {} as Record<string, boolean> })
+  const [addForm, setAddForm] = useState({ username: "", full_name: "", password: "", role: "delavec", permissions: {} as Record<string, boolean> })
 
   const supabase = createClient()
   const router = useRouter()
@@ -68,7 +68,7 @@ export default function AdminUsers() {
     setSaving(true)
     const { error: e } = await supabase.from("profiles").update({
       role: editForm.role,
-      permissions: editForm.role === "worker" ? editForm.permissions : {},
+      permissions: editForm.role === "delavec" ? editForm.permissions : {},
     }).eq("id", editUser.id)
     if (e) { setError("Napaka: " + e.message); setSaving(false); return }
     setSaving(false)
@@ -90,14 +90,14 @@ export default function AdminUsers() {
         full_name: addForm.full_name || addForm.username,
         password: addForm.password,
         role: addForm.role,
-        permissions: addForm.role === "worker" ? addForm.permissions : {},
+        permissions: addForm.role === "delavec" ? addForm.permissions : {},
       }),
     })
     const data = await res.json()
     if (data.error) { setError("Napaka: " + data.error); setSaving(false); return }
     setSaving(false)
     setShowAddModal(false)
-    setAddForm({ username: "", full_name: "", password: "", role: "worker", permissions: {} })
+    setAddForm({ username: "", full_name: "", password: "", role: "delavec", permissions: {} })
     setSuccess("Uporabnik uspešno dodan!")
     fetchUsers()
     setTimeout(() => setSuccess(""), 3000)
@@ -143,7 +143,7 @@ export default function AdminUsers() {
                   <td colSpan={4} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Ni uporabnikov.</td>
                 </tr>
               ) : users.map((user, i) => {
-                const roleBadge = roleColors[user.role] || roleColors.worker
+                const roleBadge = roleColors[user.role] || roleColors.delavec
                 const permCount = Object.values(user.permissions || {}).filter(Boolean).length
                 const isCurrentUser = user.id === profile?.id
                 return (
@@ -158,7 +158,7 @@ export default function AdminUsers() {
                       </span>
                     </td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>
-                      {user.role === "worker" ? `${permCount} / ${Object.keys(PERMISSIONS).length} dovoljenj` : "Vse (vloga)"}
+                      {user.role === "delavec" ? `${permCount} / ${Object.keys(PERMISSIONS).length} dovoljenj` : "Vse (vloga)"}
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <button onClick={() => openEdit(user)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
@@ -175,8 +175,8 @@ export default function AdminUsers() {
           <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
             {[
               { role: "admin", desc: "Dostop do vsega, vključno z upravljanjem uporabnikov" },
-              { role: "manager", desc: "Dostop do vseh funkcij razen upravljanja uporabnikov" },
-              { role: "worker", desc: "Dostop samo do izbranih funkcij (nastavljivo)" },
+              { role: "vodja", desc: "Dostop do vseh funkcij razen upravljanja uporabnikov" },
+              { role: "delavec", desc: "Dostop samo do izbranih funkcij (nastavljivo)" },
             ].map(r => (
               <div key={r.role} style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: "1", minWidth: "200px" }}>
                 <span style={{ padding: "2px 8px", borderRadius: "999px", fontSize: "11px", fontWeight: "500", color: roleColors[r.role].color, background: roleColors[r.role].bg, whiteSpace: "nowrap" }}>
@@ -206,11 +206,11 @@ export default function AdminUsers() {
               <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })}
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
                 <option value="admin">🔴 Admin</option>
-                <option value="manager">🟡 Manager</option>
-                <option value="worker">🟢 Delavec</option>
+                <option value="vodja">🟡 Vodja</option>
+                <option value="delavec">🟢 Delavec</option>
               </select>
             </div>
-            {editForm.role === "worker" && (
+            {editForm.role === "delavec" && (
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Dovoljenja</label>
                 <div style={{ border: "1px solid #e5e7eb", borderRadius: "6px", overflow: "hidden" }}>
@@ -267,11 +267,11 @@ export default function AdminUsers() {
               <select value={addForm.role} onChange={e => setAddForm({ ...addForm, role: e.target.value })}
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
                 <option value="admin">🔴 Admin</option>
-                <option value="manager">🟡 Manager</option>
-                <option value="worker">🟢 Delavec</option>
+                <option value="vodja">🟡 Vodja</option>
+                <option value="delavec">🟢 Delavec</option>
               </select>
             </div>
-            {addForm.role === "worker" && (
+            {addForm.role === "delavec" && (
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Dovoljenja</label>
                 <div style={{ border: "1px solid #e5e7eb", borderRadius: "6px", overflow: "hidden" }}>

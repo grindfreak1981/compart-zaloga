@@ -34,8 +34,8 @@ export default function Sidebar({ active, profile }: SidebarProps) {
 
   const roleLabel: Record<string, string> = {
     admin: "🔴 Admin",
-    manager: "🟡 Manager",
-    worker: "🟢 Delavec",
+    vodja: "🟡 Vodja",
+    delavec: "🟢 Delavec",
   }
 
   return (
@@ -84,4 +84,3 @@ export default function Sidebar({ active, profile }: SidebarProps) {
     </div>
   )
 }
-
