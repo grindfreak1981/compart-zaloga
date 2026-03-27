@@ -39,7 +39,7 @@ export default function AdminUsers() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [editForm, setEditForm] = useState({ role: "worker", permissions: {} as Record<string, boolean> })
-  const [addForm, setAddForm] = useState({ email: "", full_name: "", password: "", role: "worker", permissions: {} as Record<string, boolean> })
+  const [addForm, setAddForm] = useState({ username: "", full_name: "", password: "", role: "worker", permissions: {} as Record<string, boolean> })
 
   const supabase = createClient()
   const router = useRouter()
@@ -80,14 +80,14 @@ export default function AdminUsers() {
 
   const handleAddUser = async () => {
     setError("")
-    if (!addForm.email || !addForm.password || !addForm.full_name) { setError("Izpolni vsa obvezna polja."); return }
+    if (!addForm.username || !addForm.password) { setError("Vpiši uporabniško ime in geslo."); return }
     setSaving(true)
     const res = await fetch("/api/admin/create-user", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: addForm.email,
-        full_name: addForm.full_name,
+        username: addForm.username,
+        full_name: addForm.full_name || addForm.username,
         password: addForm.password,
         role: addForm.role,
         permissions: addForm.role === "worker" ? addForm.permissions : {},
@@ -97,7 +97,7 @@ export default function AdminUsers() {
     if (data.error) { setError("Napaka: " + data.error); setSaving(false); return }
     setSaving(false)
     setShowAddModal(false)
-    setAddForm({ email: "", full_name: "", password: "", role: "worker", permissions: {} })
+    setAddForm({ username: "", full_name: "", password: "", role: "worker", permissions: {} })
     setSuccess("Uporabnik uspešno dodan!")
     fetchUsers()
     setTimeout(() => setSuccess(""), 3000)
@@ -132,7 +132,7 @@ export default function AdminUsers() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Ime in priimek", "Email", "Vloga", "Dovoljenja", "Akcije"].map(h => (
+                {["Ime in priimek", "Vloga", "Dovoljenja", "Akcije"].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -140,7 +140,7 @@ export default function AdminUsers() {
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Ni uporabnikov.</td>
+                  <td colSpan={4} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Ni uporabnikov.</td>
                 </tr>
               ) : users.map((user, i) => {
                 const roleBadge = roleColors[user.role] || roleColors.worker
@@ -152,7 +152,6 @@ export default function AdminUsers() {
                       {user.full_name || "—"}
                       {isCurrentUser && <span style={{ marginLeft: "8px", fontSize: "11px", color: "#6b7280" }}>(jaz)</span>}
                     </td>
-                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{user.email}</td>
                     <td style={{ padding: "12px 16px" }}>
                       <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: roleBadge.color, background: roleBadge.bg }}>
                         {roleBadge.label}
@@ -200,7 +199,6 @@ export default function AdminUsers() {
             </div>
             <div style={{ background: "#f9fafb", borderRadius: "6px", padding: "12px 16px", marginBottom: "20px" }}>
               <div style={{ fontWeight: "500", fontSize: "14px", color: "#111827" }}>{editUser.full_name}</div>
-              <div style={{ fontSize: "12px", color: "#6b7280" }}>{editUser.email}</div>
             </div>
             {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             <div style={{ marginBottom: "20px" }}>
@@ -221,8 +219,8 @@ export default function AdminUsers() {
                       <span style={{ fontSize: "13px", color: "#374151" }}>{label}</span>
                       <button
                         onClick={() => setEditForm(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }))}
-                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: editForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative", transition: "background 0.2s" }}>
-                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", transition: "left 0.2s", left: editForm.permissions[key] ? "23px" : "3px" }} />
+                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: editForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative" }}>
+                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", left: editForm.permissions[key] ? "23px" : "3px" }} />
                       </button>
                     </div>
                   ))}
@@ -250,8 +248,8 @@ export default function AdminUsers() {
             </div>
             {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "6px", padding: "10px 14px", marginBottom: "16px", color: "#dc2626", fontSize: "13px" }}>⚠️ {error}</div>}
             {[
-              { label: "Ime in priimek *", key: "full_name", type: "text", placeholder: "Janez Novak" },
-              { label: "Email *", key: "email", type: "email", placeholder: "janez@podjetje.si" },
+              { label: "Uporabniško ime *", key: "username", type: "text", placeholder: "npr. janez" },
+              { label: "Ime in priimek", key: "full_name", type: "text", placeholder: "Janez Novak" },
               { label: "Geslo *", key: "password", type: "password", placeholder: "Vsaj 6 znakov" },
             ].map(field => (
               <div key={field.key} style={{ marginBottom: "16px" }}>
@@ -282,8 +280,8 @@ export default function AdminUsers() {
                       <span style={{ fontSize: "13px", color: "#374151" }}>{label}</span>
                       <button
                         onClick={() => setAddForm(prev => ({ ...prev, permissions: { ...prev.permissions, [key]: !prev.permissions[key] } }))}
-                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: addForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative", transition: "background 0.2s" }}>
-                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", transition: "left 0.2s", left: addForm.permissions[key] ? "23px" : "3px" }} />
+                        style={{ width: "44px", height: "24px", borderRadius: "12px", border: "none", cursor: "pointer", background: addForm.permissions[key] ? "#c41230" : "#d1d5db", position: "relative" }}>
+                        <span style={{ position: "absolute", top: "3px", width: "18px", height: "18px", borderRadius: "50%", background: "white", left: addForm.permissions[key] ? "23px" : "3px" }} />
                       </button>
                     </div>
                   ))}

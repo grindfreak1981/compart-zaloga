@@ -8,13 +8,15 @@ export async function POST(req: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { email, full_name, password, role, permissions } = await req.json()
+  const { username, full_name, password, role, permissions } = await req.json()
+
+  const email = `${username.trim().toLowerCase()}@compart.local`
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name },
+    user_metadata: { full_name: full_name || username },
   })
 
   if (error || !data.user) {
@@ -23,8 +25,7 @@ export async function POST(req: Request) {
 
   await supabaseAdmin.from('profiles').upsert({
     id: data.user.id,
-    email,
-    full_name,
+    full_name: full_name || username,
     role,
     permissions,
   })
