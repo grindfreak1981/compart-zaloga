@@ -29,12 +29,6 @@ export default function PregledZaloge() {
   const supabase = createClient()
   const canEdit = hasPermission(profile, PERMISSIONS.EDIT_STOCK)
 
-  useEffect(() => {
-    console.log("PROFILE ROLE:", profile?.role)
-    console.log("PROFILE PERMISSIONS:", profile?.permissions)
-    console.log("CAN EDIT:", canEdit)
-    console.log("FULL PROFILE:", profile)
-  }, [profile])
 
   useEffect(() => { fetchMaterials() }, [])
 
