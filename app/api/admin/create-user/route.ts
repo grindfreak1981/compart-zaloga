@@ -19,20 +19,22 @@ export async function POST(req: Request) {
   })
 
   if (error || !data.user) {
-    return NextResponse.json({ error: error?.message || 'Napaka' }, { status: 400 })
+    return NextResponse.json({ error: error?.message || 'Napaka pri ustvarjanju userja' }, { status: 400 })
   }
 
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
-    .insert({
+    .upsert({
       id: data.user.id,
       full_name: full_name || username,
       role: role,
       permissions: permissions || {},
-    })
+    }, { onConflict: 'id' })
 
   if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 400 })
+    // Pobriši userja če profil ni uspel
+    await supabaseAdmin.auth.admin.deleteUser(data.user.id)
+    return NextResponse.json({ error: 'Profil napaka: ' + profileError.message }, { status: 400 })
   }
 
   return NextResponse.json({ success: true })
