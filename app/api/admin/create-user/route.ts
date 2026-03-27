@@ -9,7 +9,6 @@ export async function POST(req: Request) {
   )
 
   const { username, full_name, password, role, permissions } = await req.json()
-
   const email = `${username.trim().toLowerCase()}@compart.local`
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
@@ -23,12 +22,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: error?.message || 'Napaka' }, { status: 400 })
   }
 
-  await supabaseAdmin.from('profiles').upsert({
-    id: data.user.id,
-    full_name: full_name || username,
-    role,
-    permissions,
-  })
+  const { error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .insert({
+      id: data.user.id,
+      full_name: full_name || username,
+      role: role,
+      permissions: permissions || {},
+    })
+
+  if (profileError) {
+    return NextResponse.json({ error: profileError.message }, { status: 400 })
+  }
 
   return NextResponse.json({ success: true })
 }
