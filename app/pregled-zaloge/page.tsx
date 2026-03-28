@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 import { useProfile } from "@/hooks/useProfile"
 import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import Sidebar from "@/components/Sidebar"
 import * as XLSX from "xlsx"
 
@@ -18,6 +19,7 @@ interface Material {
 
 export default function PregledZaloge() {
   const { profile, loading: profileLoading } = useProfile()
+  const isMobile = useIsMobile()
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -28,7 +30,6 @@ export default function PregledZaloge() {
 
   const supabase = createClient()
   const canEdit = hasPermission(profile, PERMISSIONS.EDIT_STOCK)
-
 
   useEffect(() => { fetchMaterials() }, [])
 
@@ -104,80 +105,80 @@ export default function PregledZaloge() {
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
       <Sidebar active="/pregled-zaloge" profile={profile} />
 
-      <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
+      <div style={{ flex: 1, background: "#f8fafc", padding: isMobile ? "16px" : "32px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
           <div>
-            <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Pregled zaloge</h1>
-            <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Skupen pregled vseh materialov v skladišču.</p>
+            <h1 style={{ fontSize: isMobile ? "22px" : "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Pregled zaloge</h1>
+            <p style={{ color: "#6b7280", fontSize: "14px", margin: "4px 0 0 0" }}>Skupen pregled vseh materialov v skladišču.</p>
           </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <button onClick={exportExcel} style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>📥 Izvozi Excel</button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button onClick={exportExcel} style={{ padding: "8px 16px", border: "1px solid #d1d5db", borderRadius: "6px", background: "white", cursor: "pointer", fontSize: "13px" }}>📥 Excel</button>
             {canEdit && (
-              <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj material</button>
+              <button onClick={openAdd} style={{ padding: "8px 16px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>+ Dodaj</button>
             )}
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "32px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: "12px", marginBottom: "24px" }}>
           {[
             { value: materials.length, label: "Vsi materiali", color: "#c41230" },
             { value: nizkaZaloga, label: "Nizka zaloga ⚠️", color: "#d97706" },
             { value: brezZaloge, label: "Brez zaloge 🔴", color: "#dc2626" },
             { value: "—", label: "Vrednost zaloge", color: "#059669" },
           ].map((card) => (
-            <div key={card.label} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px", borderTop: `3px solid ${card.color}` }}>
-              <div style={{ fontSize: "28px", fontWeight: "bold", color: card.color }}>{card.value}</div>
-              <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>{card.label}</div>
+            <div key={card.label} style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "16px", borderTop: `3px solid ${card.color}` }}>
+              <div style={{ fontSize: "24px", fontWeight: "bold", color: card.color }}>{card.value}</div>
+              <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>{card.label}</div>
             </div>
           ))}
         </div>
 
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Naziv materiala", "Enota", "Zaloga", "Min. zaloga", "Status", ...(canEdit ? ["Akcije"] : [])].map(h => (
-                  <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {materials.length === 0 ? (
-                <tr>
-                  <td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
-                    Še ni dodanih materialov.
-                  </td>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "500px" }}>
+              <thead>
+                <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                  {["Naziv materiala", "Enota", "Zaloga", "Min.", "Status", ...(canEdit ? ["Akcije"] : [])].map(h => (
+                    <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
                 </tr>
-              ) : materials.map((material, i) => {
-                const status = getStatus(material.current_stock, material.min_stock)
-                return (
-                  <tr key={material.id} style={{ background: status.bg !== "transparent" ? status.bg : (i % 2 === 0 ? "white" : "#fafafa"), borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{material.name}</td>
-                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{material.unit}</td>
-                    <td style={{ padding: "12px 16px", fontWeight: "600", color: "#111827", fontSize: "13px" }}>{material.current_stock.toLocaleString()}</td>
-                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{material.min_stock.toLocaleString()}</td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: status.color, background: `${status.color}22`, border: `1px solid ${status.color}44` }}>
-                        {status.label}
-                      </span>
-                    </td>
-                    {canEdit && (
-                      <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
-                        <button onClick={() => openEdit(material)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
-                        <button onClick={() => deleteMaterial(material.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
-                      </td>
-                    )}
+              </thead>
+              <tbody>
+                {materials.length === 0 ? (
+                  <tr>
+                    <td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Še ni dodanih materialov.</td>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                ) : materials.map((material, i) => {
+                  const status = getStatus(material.current_stock, material.min_stock)
+                  return (
+                    <tr key={material.id} style={{ background: status.bg !== "transparent" ? status.bg : (i % 2 === 0 ? "white" : "#fafafa"), borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{material.name}</td>
+                      <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{material.unit}</td>
+                      <td style={{ padding: "12px 16px", fontWeight: "600", color: "#111827", fontSize: "13px" }}>{material.current_stock.toLocaleString()}</td>
+                      <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{material.min_stock.toLocaleString()}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: status.color, background: `${status.color}22`, border: `1px solid ${status.color}44`, whiteSpace: "nowrap" }}>
+                          {status.label}
+                        </span>
+                      </td>
+                      {canEdit && (
+                        <td style={{ padding: "12px 16px", whiteSpace: "nowrap" }}>
+                          <button onClick={() => openEdit(material)} style={{ padding: "5px 10px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold", marginRight: "6px" }}>✏️</button>
+                          <button onClick={() => deleteMaterial(material.id)} style={{ padding: "5px 10px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️</button>
+                        </td>
+                      )}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
       {showModal && (
-        <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "480px", borderRadius: "8px", padding: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+        <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "16px" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "100%", maxWidth: "480px", borderRadius: "8px", padding: "24px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
               <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#111827", margin: 0 }}>{editMaterial ? "Uredi material" : "Nov material"}</h2>
               <button onClick={() => setShowModal(false)} style={{ background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6b7280" }}>×</button>

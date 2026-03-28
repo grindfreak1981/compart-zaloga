@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
 import { useProfile } from "@/hooks/useProfile"
 import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import { useIsMobile } from "@/hooks/useIsMobile"
 import Sidebar from "@/components/Sidebar"
 
 interface Material {
@@ -15,6 +16,7 @@ interface Material {
 
 export default function Poraba() {
   const { profile, loading: profileLoading } = useProfile()
+  const isMobile = useIsMobile()
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedMaterial, setSelectedMaterial] = useState<number | null>(null)
@@ -65,10 +67,10 @@ export default function Poraba() {
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
       <Sidebar active="/poraba" profile={profile} />
 
-      <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
-        <div style={{ marginBottom: "32px" }}>
-          <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Poraba materiala</h1>
-          <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Zabeleži porabo materiala iz skladišča.</p>
+      <div style={{ flex: 1, background: "#f8fafc", padding: isMobile ? "16px" : "32px" }}>
+        <div style={{ marginBottom: "24px" }}>
+          <h1 style={{ fontSize: isMobile ? "22px" : "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Poraba materiala</h1>
+          <p style={{ color: "#6b7280", fontSize: "14px", margin: "4px 0 0 0" }}>Zabeleži porabo materiala iz skladišča.</p>
         </div>
 
         {!canStockOut ? (
@@ -79,7 +81,7 @@ export default function Poraba() {
           <>
             {success && <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#16a34a", fontWeight: "500", fontSize: "14px" }}>✅ Poraba uspešno zabeležena!</div>}
             {error && <div style={{ background: "#fff5f5", border: "1px solid #fca5a5", borderRadius: "8px", padding: "14px 18px", marginBottom: "24px", color: "#dc2626", fontWeight: "500", fontSize: "14px" }}>⚠️ {error}</div>}
-            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "28px", maxWidth: "560px" }}>
+            <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "24px", maxWidth: "560px" }}>
               <div style={{ marginBottom: "20px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Material *</label>
                 <select value={selectedMaterial || ""} onChange={e => { setSelectedMaterial(parseInt(e.target.value)); setError("") }}
@@ -110,28 +112,30 @@ export default function Poraba() {
           <h2 style={{ fontSize: "18px", fontWeight: "bold", color: "#111827", marginBottom: "16px" }}>Zadnja poraba</h2>
           {movements.length === 0 ? <p style={{ color: "#9ca3af", fontSize: "14px" }}>Še ni zapisov.</p> : (
             <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                    {["Material", "Količina", "Opomba", "Datum"].map(h => (
-                      <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {movements.map((m, i) => {
-                    const mat = materials.find(x => x.id === m.material_id)
-                    return (
-                      <tr key={m.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#111827" }}>{mat?.name || "—"}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>-{m.quantity} {mat?.unit}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#6b7280" }}>{m.note || "—"}</td>
-                        <td style={{ padding: "10px 14px", fontSize: "13px", color: "#6b7280" }}>{new Date(m.created_at).toLocaleDateString("sl-SI")}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "400px" }}>
+                  <thead>
+                    <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
+                      {["Material", "Količina", "Opomba", "Datum"].map(h => (
+                        <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movements.map((m, i) => {
+                      const mat = materials.find(x => x.id === m.material_id)
+                      return (
+                        <tr key={m.id} style={{ borderBottom: "1px solid #f3f4f6", background: i % 2 === 0 ? "white" : "#fafafa" }}>
+                          <td style={{ padding: "10px 14px", fontSize: "13px", color: "#111827" }}>{mat?.name || "—"}</td>
+                          <td style={{ padding: "10px 14px", fontSize: "13px", fontWeight: "600", color: "#dc2626", whiteSpace: "nowrap" }}>-{m.quantity} {mat?.unit}</td>
+                          <td style={{ padding: "10px 14px", fontSize: "13px", color: "#6b7280" }}>{m.note || "—"}</td>
+                          <td style={{ padding: "10px 14px", fontSize: "13px", color: "#6b7280", whiteSpace: "nowrap" }}>{new Date(m.created_at).toLocaleDateString("sl-SI")}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
