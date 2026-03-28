@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 
 interface Material { id: number; name: string; unit: string; current_stock: number }
 interface WorkOrderItem { material_id: number; quantity: number }
-interface WorkOrder { id: number; title: string; customer_id: number | null; status: string; created_at: string; customers?: { name: string } }
+interface WorkOrder { id: number; title: string; customer_id: number | null; status: string; created_at: string; notes?: string; customers?: { name: string } }
 interface Customer { id: number; name: string }
 
 export default function Delniki() {
@@ -24,6 +24,7 @@ export default function Delniki() {
   const [success, setSuccess] = useState(false)
   const [title, setTitle] = useState("")
   const [customerId, setCustomerId] = useState<number | null>(null)
+  const [notes, setNotes] = useState("")
   const [items, setItems] = useState<WorkOrderItem[]>([{ material_id: 0, quantity: 0 }])
 
   const supabase = createClient()
@@ -56,10 +57,10 @@ export default function Delniki() {
     const validItems = items.filter(it => it.material_id > 0 && it.quantity > 0)
     if (validItems.length === 0) { setError("Dodaj vsaj en material s količino."); return }
     setSaving(true)
-    const { data: wo, error: woError } = await supabase.from("work_orders").insert([{ title: title.trim(), customer_id: customerId, status: "open" }]).select().single()
+    const { data: wo, error: woError } = await supabase.from("work_orders").insert([{ title: title.trim(), customer_id: customerId, status: "open", notes: notes.trim() }]).select().single()
     if (woError || !wo) { setError("Napaka: " + (woError?.message || "neznan problem")); setSaving(false); return }
     await supabase.from("work_order_items").insert(validItems.map(it => ({ work_order_id: wo.id, material_id: it.material_id, quantity: it.quantity })))
-    setTitle(""); setCustomerId(null); setItems([{ material_id: 0, quantity: 0 }])
+    setTitle(""); setCustomerId(null); setNotes(""); setItems([{ material_id: 0, quantity: 0 }])
     setShowModal(false); setSaving(false); setSuccess(true)
     fetchAll()
     setTimeout(() => setSuccess(false), 3000)
@@ -111,14 +112,14 @@ export default function Delniki() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["#", "Naziv", "Stranka", "Status", "Datum", ...(canEdit ? ["Akcije"] : [])].map(h => (
+                {["#", "Naziv", "Stranka", "Opombe", "Status", "Datum", ...(canEdit ? ["Akcije"] : [])].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {workOrders.length === 0 ? (
-                <tr><td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Še ni delovnih nalogov.</td></tr>
+                <tr><td colSpan={canEdit ? 7 : 6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>Še ni delovnih nalogov.</td></tr>
               ) : workOrders.map((wo, i) => {
                 const badge = getStatusBadge(wo.status)
                 return (
@@ -127,6 +128,7 @@ export default function Delniki() {
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: "13px" }}>#{wo.id}</td>
                     <td style={{ padding: "12px 16px", fontWeight: "500", color: "#111827", fontSize: "13px" }}>{wo.title}</td>
                     <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{wo.customers?.name || "—"}</td>
+                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px", maxWidth: "200px" }}>{wo.notes || "—"}</td>
                     <td style={{ padding: "12px 16px" }}>
                       <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: "500", color: badge.color, background: badge.bg, border: `1px solid ${badge.color}44` }}>{badge.label}</span>
                     </td>
@@ -159,13 +161,18 @@ export default function Delniki() {
               <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Npr. Tisk posterjev za stranko X"
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
             </div>
-            <div style={{ marginBottom: "20px" }}>
+            <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Stranka</label>
               <select value={customerId || ""} onChange={e => setCustomerId(e.target.value ? parseInt(e.target.value) : null)}
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", background: "white", boxSizing: "border-box" }}>
                 <option value="">-- Izberi stranko --</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+            </div>
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opombe</label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Posebna navodila, napomene..."
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", resize: "vertical", boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: "20px" }}>
               <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "10px" }}>Materiali</label>

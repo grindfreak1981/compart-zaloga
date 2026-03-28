@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase"
+import { useProfile } from "@/hooks/useProfile"
+import { hasPermission, PERMISSIONS } from "@/lib/permissions"
+import Sidebar from "@/components/Sidebar"
 
 interface Customer {
   id: number
@@ -13,18 +16,8 @@ interface Customer {
   created_at: string
 }
 
-const sidebarItems = [
-  { icon: "🏠", label: "Dashboard", active: false, href: "/" },
-  { icon: "📊", label: "Pregled zaloge", active: false, href: "/pregled-zaloge" },
-  { icon: "📥", label: "Prevzem blaga", active: false, href: "/prevzem" },
-  { icon: "📤", label: "Poraba", active: false, href: "/poraba" },
-  { icon: "📋", label: "Delovni nalogi", active: false, href: "/delniki" },
-  { icon: "👥", label: "Stranke", active: true, href: "/stranke" },
-  { icon: "🏭", label: "Dobavitelji", active: false, href: "/dobavitelji" },
-  { icon: "📈", label: "Poročila", active: false, href: "/porocila" },
-]
-
 export default function Stranke() {
+  const { profile, loading: profileLoading } = useProfile()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -34,6 +27,7 @@ export default function Stranke() {
   const [error, setError] = useState("")
 
   const supabase = createClient()
+  const canEdit = hasPermission(profile, PERMISSIONS.EDIT_CUSTOMERS)
 
   useEffect(() => { fetchCustomers() }, [])
 
@@ -79,46 +73,13 @@ export default function Stranke() {
     fetchCustomers()
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/login"
-  }
-
-  if (loading) return (
+  if (loading || profileLoading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", fontFamily: "sans-serif" }}>Nalagam...</div>
   )
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "sans-serif" }}>
-      <div style={{ width: "240px", minWidth: "240px", background: "#1c1c1c", color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "#c41230", padding: "16px 20px" }}>
-          <div style={{ fontWeight: "bold", fontSize: "18px" }}>🖨️ Tiskarna</div>
-          <div style={{ fontSize: "11px", color: "#ffcdd2" }}>Zaloga materialov</div>
-        </div>
-        <div style={{ padding: "16px 12px", flex: 1 }}>
-          {sidebarItems.map((item) => (
-            <a key={item.label} href={item.href} style={{
-              display: "block", padding: "10px 14px", borderRadius: "6px", marginBottom: "4px",
-              background: item.active ? "rgba(196,18,48,0.25)" : "transparent",
-              borderLeft: item.active ? "3px solid #c41230" : "3px solid transparent",
-              color: item.active ? "white" : "#9ca3af",
-              cursor: "pointer", fontSize: "13px", textDecoration: "none",
-            }}>
-              {item.icon}&nbsp;&nbsp;{item.label}
-            </a>
-          ))}
-        </div>
-        <div style={{ padding: "12px", borderTop: "1px solid #2a2a2a" }}>
-          <button onClick={handleLogout} style={{
-            display: "block", width: "100%", padding: "10px 14px", borderRadius: "6px",
-            background: "transparent", color: "#9ca3af", cursor: "pointer", fontSize: "13px",
-            textAlign: "left", border: "none", marginBottom: "8px"
-          }}>
-            🚪&nbsp;&nbsp;Odjava
-          </button>
-          <div style={{ fontSize: "10px", color: "#4b5563", paddingLeft: "4px" }}>© 2026 Compart</div>
-        </div>
-      </div>
+      <Sidebar active="/stranke" profile={profile} />
 
       <div style={{ flex: 1, background: "#f8fafc", padding: "32px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "32px" }}>
@@ -126,16 +87,18 @@ export default function Stranke() {
             <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#111827", margin: 0 }}>Stranke</h1>
             <p style={{ color: "#6b7280", marginTop: "4px", fontSize: "14px", margin: "4px 0 0 0" }}>Evidenca strank.</p>
           </div>
-          <button onClick={openAdd} style={{ padding: "10px 18px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
-            + Dodaj stranko
-          </button>
+          {canEdit && (
+            <button onClick={openAdd} style={{ padding: "10px 18px", background: "#c41230", color: "white", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "bold" }}>
+              + Dodaj stranko
+            </button>
+          )}
         </div>
 
         <div style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f9fafb", borderBottom: "1px solid #e5e7eb" }}>
-                {["Naziv", "Kontakt", "Telefon", "Email", "Akcije"].map(h => (
+                {["Naziv", "Kontakt", "Telefon", "Email", "Opombe", ...(canEdit ? ["Akcije"] : [])].map(h => (
                   <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
                 ))}
               </tr>
@@ -143,7 +106,7 @@ export default function Stranke() {
             <tbody>
               {customers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                  <td colSpan={canEdit ? 6 : 5} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
                     Še ni dodanih strank. Klikni <strong>+ Dodaj stranko</strong>.
                   </td>
                 </tr>
@@ -153,10 +116,13 @@ export default function Stranke() {
                   <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{c.contact || "—"}</td>
                   <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{c.phone || "—"}</td>
                   <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px" }}>{c.email || "—"}</td>
-                  <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
-                    <button onClick={() => openEdit(c)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
-                    <button onClick={() => handleDelete(c.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
-                  </td>
+                  <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: "13px", maxWidth: "200px" }}>{c.notes || "—"}</td>
+                  {canEdit && (
+                    <td style={{ padding: "12px 16px", display: "flex", gap: "8px" }}>
+                      <button onClick={() => openEdit(c)} style={{ padding: "5px 12px", background: "#3b82f6", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>✏️ Uredi</button>
+                      <button onClick={() => handleDelete(c.id)} style={{ padding: "5px 12px", background: "#ef4444", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", fontSize: "12px", fontWeight: "bold" }}>🗑️ Izbriši</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -179,7 +145,6 @@ export default function Stranke() {
               { label: "Kontaktna oseba", key: "contact", placeholder: "Ime in priimek" },
               { label: "Telefon", key: "phone", placeholder: "+386 ..." },
               { label: "Email", key: "email", placeholder: "info@podjetje.si" },
-              { label: "Opombe", key: "notes", placeholder: "Dodatne informacije..." },
             ].map(field => (
               <div key={field.key} style={{ marginBottom: "16px" }}>
                 <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>{field.label}</label>
@@ -187,6 +152,11 @@ export default function Stranke() {
                   style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
               </div>
             ))}
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", color: "#374151", marginBottom: "6px" }}>Opombe</label>
+              <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={3} placeholder="Dodatne informacije..."
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", resize: "vertical", boxSizing: "border-box" }} />
+            </div>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", marginTop: "8px" }}>
               <button onClick={() => setShowModal(false)} style={{ padding: "10px 20px", border: "1px solid #d1d5db", background: "white", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}>Prekliči</button>
               <button onClick={handleSave} disabled={saving}
